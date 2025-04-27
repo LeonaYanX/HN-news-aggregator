@@ -1,5 +1,18 @@
 const User = require('../models/User');
 
+async function addCommentToUserCommentArray(user,comment) {
+    try {
+        if(!user || !comment){
+            throw {status:400, message: 'Both user and comment is required.'}
+        }
+        await User.findByIdAndUpdate(user._id, { $push: { comments: comment._id } });
+
+        return true;
+
+    } catch (error) {
+        throw error;
+    }
+}
 async function findUserById(userId) {
     try {
       if (!userId) {
@@ -173,4 +186,5 @@ async function findUserById(userId) {
 
 module.exports = {findUserById, blockingUserByType
     , unblockUser, getAllUsers, findUserByUsername: findUserByUsernameAdmin
-    , isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching};
+    , isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching
+    ,addCommentToUserCommentArray};

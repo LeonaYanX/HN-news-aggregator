@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { verifyToken } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authenticate');
 
 router.use(verifyToken);
+router.use(authenticate);
 //GET /api/user/me getting profile
 router.get('/me', userController.getProfile);
 //PUT /api/user/me updating profile
@@ -14,7 +16,7 @@ router.post('/favorites/submission/:submissionId', userController.favoriteSubmis
 router.post('/favorites/comment/:commentId', userController.favoriteComment);
 // PUT  /api/user/change-password changing pass
 router.put('/change-password', userController.changePassword);
-// DELETE /api/user/favorites/submissions/:submissionId unfavorite submission
+// DELETE /api/user/favorites/submissions/:submissionId unfavorite submission////////
 router.delete('/favorites/submissions/:submissionId', userController.unfavoriteSubmission);
 // DELETE /api/user/favorites/comments/:commentId unfavorite comment
 router.delete('/favorites/comments/:commentId', userController.unfavoriteComment);

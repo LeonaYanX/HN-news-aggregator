@@ -1,5 +1,17 @@
 const Comment = require('../models/Comment');
 
+
+async function isThereAParent(comment) {
+try {
+  if(!comment){
+    throw {status:400, message:'Comment required.'};
+  }
+  return !!comment.parent;
+
+} catch (error) {
+  throw error
+}
+}
 //Finds comment by id with if tests returns comment
 
 async function findCommentById(commentId) {
@@ -25,6 +37,9 @@ async function deleteCommentWithChildren (commentId)  {
 
   // finding all children
   try{ 
+    if(!commentId){
+      throw {status:400, message:'Comment id required'}
+    }
    
     const comment = await findCommentById(commentId);
 
@@ -55,4 +70,60 @@ for (const child of childComments) {
  
 };
 
-module.exports = {deleteCommentWithChildren, findCommentById};
+async function getParentComment(comment) {
+  try {
+    if(!comment){
+      throw {status:400, message:'Comment is required'}
+    }
+   // finding parent
+      const parentComment = await Comment.findById(comment.parent)
+        .populate('userId', 'username')
+        .lean();
+  
+      if (!parentComment) {
+        return null;
+      }  
+      else{
+        return parentComment;
+      }
+  } catch (error) {
+    throw error;
+  }
+};
+
+//create new comment on submission
+async function createNewComment(userId, text, submissionId) {
+  try {
+    if(!userId || !text || !submissionId){
+      throw{status:400, message: 'Some of the parameters of a new comment not found.'};
+    }
+
+     const comment = new Comment({
+          userId:userId,
+          text,
+          parent: null,
+          onSubmission: submissionId
+        });
+    
+        await comment.save();
+
+        return comment;
+
+  } catch (error) {
+    throw error;
+  }
+};
+
+async function findingChildComment(comment) {
+  try {
+    if(!comment){
+      throw {status};
+    }
+    
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = {deleteCommentWithChildren, findCommentById, createNewComment
+  , isThereAParent, getParentComment };

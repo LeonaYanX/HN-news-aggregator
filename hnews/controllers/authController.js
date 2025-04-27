@@ -1,6 +1,5 @@
-const User = require('../models/User');
 const {generateTokens} = require('../utils/token');
-const RefreshToken = require('../models/refreshToken');
+const RefreshToken = require('../models/refreshToken');// not practic to take to utils
 const {isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching}
  = require('../utils/UserService');
 
@@ -46,7 +45,7 @@ exports.login = async(req,res)=>{
        if(!(await isPassMatching(password))){
         return res.status(401).json({error: 'invalid credentials'});
        } 
-       
+
        if(user.isBlocked){
 
         if(user.blockedUntil && user.blockedUntil> Date.now()){

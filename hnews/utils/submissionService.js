@@ -1,5 +1,21 @@
 const Submission = require('../models/Submission');
 
+async function updateSubmissionCommentsArrayPush(submission, comment) {
+    try {
+        if(!submission){
+            throw {status: 400 , message: 'Submission is required.'};
+        }
+
+        await Submission.findByIdAndUpdate(submission._id, { $push: { comments: comment._id }});
+
+        return true;
+    } catch (error) {
+        throw error;
+    }
+   
+    
+}
+
 async function findSubmissionById(submissionId) {
     try{
         if(!submissionId){
@@ -47,4 +63,4 @@ async function deleteSubmissionById(submissionId) {
     
 //};
 
-module.exports= {findSubmissionById, deleteSubmissionById};
+module.exports= {findSubmissionById, deleteSubmissionById, updateSubmissionCommentsArrayPush};
