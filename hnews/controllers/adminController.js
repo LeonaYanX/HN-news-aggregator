@@ -2,7 +2,7 @@ const {findUserById, blockingUserByType, unblockUser, getAllUsers, findUserByUse
 = require('../utils/UserService');
 const {deleteSubmissionById} = require('../utils/submissionService');
 const {findCommentById, deleteCommentWithChildren} = require('../utils/commentService');
-
+const { userToView } = require('../viewModels/userViewModel');
 //Block user
 exports.blockUser = async (req,res)=>{
     const {userId} = req.params;
@@ -61,31 +61,37 @@ exports.deleteSubmission = async (req, res) => {
         }
       };
 
-      //get all users list without passwords
+      // getting all users 
+exports.getAllUsers = async (req, res) => {
+  try {
+      const users = await getAllUsers();
+      const usersView = users.map(userToView);  
 
-      exports.getAllUsers = async (req,res) => {
-        try{
-            const users = await getAllUsers();
-            res.status(200).json({message: 'User list', users});
-        }catch(err){
-            console.error('Error getting users list', err);
-            res.status(500).json({message: 'Error getting users list'});
-        }
-      };
+      res.status(200).json({ message: 'User list', users: usersView });
+  } catch (err) {
+      console.error('Error getting users list', err);
+      res.status(500).json({ message: 'Error getting users list' });
+  }
+};
 
-      //find user by username
-      exports.findUserByUsername = async (req, res) => {
-        try {
-          const { username } = req.body;
+  //find user by username 
+exports.findUserByUsername = async (req, res) => {
+  try {
+      const { username } = req.body;
+      const user = await findUserByUsernameAdmin(username);
 
-          const user = await findUserByUsernameAdmin(username);
-      
-          res.status(200).json({ user });
-        } catch (err) {
-          console.error('Find user by username error:', err);
-          res.status(500).json({ error: 'Server error' });
-        }
-      };
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      const userView = userToView(user);
+
+      res.status(200).json({ user: userView });
+  } catch (err) {
+      console.error('Find user by username error:', err);
+      res.status(500).json({ error: 'Server error' });
+  }
+};
       
 
 

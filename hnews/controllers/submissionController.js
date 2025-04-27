@@ -1,59 +1,63 @@
 const Submission = require('../models/Submission');
 const User = require('../models/User');
+const { submissionToView } = require('../utils/submissionToView');
 
 // Create a new submission
 exports.createStory = async (req, res) => {
   const { title, url, text, specific } = req.body;
 
   try {
-    // creating new submission
     const submission = new Submission({
-      by: req.user.id, // logined user id from token
+      by: req.user.id,
       title,
       url,
       text,
-      specific: specific || 'story' 
+      specific: specific || 'story',
     });
 
-   
     await submission.save();
-
-    // Adding id of Submission to user's sub. array
     await User.findByIdAndUpdate(req.user.id, { $push: { submissions: submission._id } });
 
-    res.status(201).json(submission);
+    res.status(201).json(submissionToView(submission));
   } catch (err) {
     console.error('Error creating submission:', err);
     res.status(500).json({ error: 'Failed to create submission' });
   }
 };
 
-// Get list of story-type submissions (latest first)
-exports.getStories = async (req, res) => {
+// Helper to get submissions by specific type
+async function getSubmissionsBySpecific(res, specificValue, sortOrder = -1) {
   try {
-    //  finding type- "story" submissions, sorting from new to old
-    const submissions = await Submission.find({ specific: 'story' })
-      .sort({ createdAt: -1 })
-      .populate('by', 'username') 
-      .lean(); // creating usual JS objects (not Mongoose documents)
+    const filter = specificValue !== undefined ? { specific: specificValue } : {};
+    const submissions = await Submission.find(filter)
+      .sort({ createdAt: sortOrder })
+      .populate('by', 'username')
+      .lean();
 
-    // giving each submission new fields
-    const enhancedSubmissions = submissions.map(sub => ({
-      ...sub, // taking all fields
-      votesCount: sub.votes ? sub.votes.length : 0, // counting votes
-      commentsCount: sub.comments ? sub.comments.length : 0, //counting comments
-      createdAt: sub.createdAt, // data already exists 
-    }));
-
-    // sending to front
-    res.status(200).json(enhancedSubmissions);
+    const formatted = submissions.map(submissionToView);
+    res.status(200).json(formatted);
   } catch (err) {
     console.error('Error getting submissions:', err);
     res.status(500).json({ error: 'Failed to get submissions' });
   }
-};
+}
 
-// Vote for a story
+// List of stories (latest first - new)
+exports.getStories = (req, res) => getSubmissionsBySpecific(res, 'story');
+
+// Get past stories (oldest first - past)
+exports.getPastSubmissions = (req, res) => getSubmissionsBySpecific(res, 'story', 1);
+
+// Specific "ask" submissions
+exports.getAskSubmissions = (req, res) => getSubmissionsBySpecific(res, 'ask');
+
+// Specific "show" submissions
+exports.getShowSubmissions = (req, res) => getSubmissionsBySpecific(res, 'show');
+
+// Specific "job" submissions
+exports.getJobSubmissions = (req, res) => getSubmissionsBySpecific(res, 'job');
+
+// Vote for a submission
 exports.voteStory = async (req, res) => {
   const { submissionId } = req.params;
 
@@ -64,12 +68,10 @@ exports.voteStory = async (req, res) => {
       return res.status(404).json({ error: 'Submission not found' });
     }
 
-    // checking if already voted
     if (submission.votes.includes(req.user.id)) {
       return res.status(400).json({ error: 'You have already voted' });
     }
 
-    // adding vote
     submission.votes.push(req.user.id);
     await submission.save();
 
@@ -80,7 +82,7 @@ exports.voteStory = async (req, res) => {
   }
 };
 
-// Unvote submission
+// Unvote a submission
 exports.unvoteSubmission = async (req, res) => {
   const { submissionId } = req.params;
 
@@ -91,279 +93,100 @@ exports.unvoteSubmission = async (req, res) => {
       return res.status(404).json({ error: 'Submission not found' });
     }
 
-    // checking if user votted
     const voteIndex = submission.votes.indexOf(req.user.id);
     if (voteIndex === -1) {
       return res.status(400).json({ error: 'You have not voted for this submission' });
     }
 
-    // Deleting vote
     submission.votes.splice(voteIndex, 1);
     await submission.save();
 
-    res.status(200).json({ message: 'Vote removed from submission successfully' });
+    res.status(200).json({ message: 'Vote removed successfully' });
   } catch (err) {
     console.error('Error unvoting submission:', err);
-    res.status(500).json({ error: 'Failed to remove vote from submission' });
+    res.status(500).json({ error: 'Failed to remove vote' });
   }
 };
 
-// get past submissions
-exports.getPastSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({specific: 'story'})
-    .sort({ createdAt: 1 })
-    .populate('by', 'username')
-    .lean();
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
-  } catch (err) {
-    console.error('Error getting past submissions', err);
-    res.status(500).json({ message: 'Failed to get past submissions' });
-  }
-};
+// Get submission owner info
+exports.getSubmissionOwner = (req, res) => {
+  const { submissionId } = req.params;
 
-// get new submissions
-exports.getNewSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({specific: ''})
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
-  } catch (err) {
-    console.error('Error getting new submissions', err);
-    res.status(500).json({ message: 'Failed to get new submissions' });
-  }
-};
+  Submission.findById(submissionId).lean()
+    .then(submission => {
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
 
-// get specific ask submissions
-exports.getAskSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({ specific: 'ask' })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
-  } catch (err) {
-    console.error('Error getting ask submissions', err);
-    res.status(500).json({ message: 'Failed to get ask submissions' });
-  }
-};
+      return User.findById(submission.by).lean();
+    })
+    .then(user => {
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
 
-// get specific "show" submissions 
-exports.getShowSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({ specific: 'show' })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
-  } catch (err) {
-    console.error('Error getting show submissions', err);
-    res.status(500).json({ message: 'Failed to get show submissions' });
-  }
-};
-
-// get specific "job" submissions 
-exports.getJobSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({ specific: 'job' })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
-  } catch (err) {
-    console.error('Error getting job submissions', err);
-    res.status(500).json({ message: 'Failed to get job submissions' });
-  }
-};
-
-// Getting the full info about the owner of a submission
-exports.getSubmissionOwner = async (req, res) => {
-  try {
-    const { submissionId } = req.params;
-
-    //Finding the submission and pull basic user info
-    const submission = await Submission.findById(submissionId)
-      .populate('by', 'username karma createdAt about') // basic author info
-      .lean();
-
-    if (!submission) {
-      return res.status(404).json({ message: 'Submission not found' });
-    }
-
-    const userId = submission.by._id;
-
-    //Finding the user and populate their related data
-    const user = await User.findById(userId)
-      .populate({
-        path: 'submissions',
-        select: 'title createdAt votes comments', // we need votes and comments to count
-        populate: { path: 'by', select: 'username' }, // populate submission's author
-      })
-      .populate({
-        path: 'comments',
-        select: 'text createdAt parent onSubmission', // for comments: parent, onSubmission
-        populate: [
-          { path: 'userId', select: 'username' }, // who wrote the comment
-          { path: 'parent', select: 'text' }, // parent comment (if exists)
-          { path: 'onSubmission', select: 'title' }, // submission where the comment was made
-        ],
-      })
-      .populate({
-        path: 'favoriteSubmissions',
-        select: 'title createdAt votes comments',
-        populate: { path: 'by', select: 'username' },
-      })
-      .populate({
-        path: 'favoriteComments',
-        select: 'text createdAt parent onSubmission',
-        populate: [
-          { path: 'userId', select: 'username' },
-          { path: 'parent', select: 'text' },
-          { path: 'onSubmission', select: 'title' },
-        ],
-      })
-      .lean();
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    //Preparing enriched arrays with counts
-    const submissions = user.submissions.map(sub => ({
-      _id: sub._id,
-      title: sub.title,
-      createdAt: sub.createdAt,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentCount: sub.comments ? sub.comments.length : 0,
-      by: sub.by?.username || 'Unknown',
-    }));
-
-    const favoriteSubmissions = user.favoriteSubmissions.map(sub => ({
-      _id: sub._id,
-      title: sub.title,
-      createdAt: sub.createdAt,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentCount: sub.comments ? sub.comments.length : 0,
-      by: sub.by?.username || 'Unknown',
-    }));
-
-    const comments = user.comments.map(comm => ({
-      _id: comm._id,
-      text: comm.text,
-      createdAt: comm.createdAt,
-      parent: comm.parent ? { _id: comm.parent._id, text: comm.parent.text } : null,
-      onSubmission: comm.onSubmission ? { _id: comm.onSubmission._id, title: comm.onSubmission.title } : null,
-      by: comm.userId ?.username || 'Unknown',
-    }));
-
-    const favoriteComments = user.favoriteComments.map(comm => ({
-      _id: comm._id,
-      text: comm.text,
-      createdAt: comm.createdAt,
-      parent: comm.parent ? { _id: comm.parent._id, text: comm.parent.text } : null,
-      onSubmission: comm.onSubmission ? { _id: comm.onSubmission._id, title: comm.onSubmission.title } : null,
-      by: comm.userId?.username || 'Unknown',
-    }));
-
-    
-    res.status(200).json({
-      username: user.username,
-      createdAt: user.createdAt,
-      karma: user.karma,
-      about: user.about,
-      submissions,
-      comments,
-      favoriteSubmissions,
-      favoriteComments,
+      const ownerView = userToView(user);
+      res.status(200).json(ownerView);
+    })
+    .catch(err => {
+      console.error('Error getting submission owner:', err);
+      res.status(500).json({ message: 'Failed to get submission owner' });
     });
-
-  } catch (err) {
-    console.error('Error getting submission owner', err);
-    res.status(500).json({ message: 'Failed to get submission owner' });
-  }
 };
 
-// Getting backday submissions
+// Get submissions from the past day
 exports.getSubmissionsByDay = async (req, res) => {
   try {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
+
     const submissions = await Submission.find({ createdAt: { $gte: yesterday } })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
+      .sort({ createdAt: -1 })
+      .populate('by', 'username')
+      .lean();
+
+    const formatted = submissions.map(submissionToView);
+    res.status(200).json(formatted);
   } catch (err) {
-    console.error('Error getting day submissions', err);
+    console.error('Error getting day submissions:', err);
     res.status(500).json({ message: 'Failed to get day submissions' });
   }
 };
 
-// getting backmonth submissions
+// Get submissions from the past month
 exports.getSubmissionsByMonth = async (req, res) => {
   try {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
+
     const submissions = await Submission.find({ createdAt: { $gte: lastMonth } })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
+      .sort({ createdAt: -1 })
+      .populate('by', 'username')
+      .lean();
+
+    const formatted = submissions.map(submissionToView);
+    res.status(200).json(formatted);
   } catch (err) {
-    console.error('Error getting month submissions', err);
+    console.error('Error getting month submissions:', err);
     res.status(500).json({ message: 'Failed to get month submissions' });
   }
 };
 
-// Getting backyear submissions
+// Get submissions from the past year
 exports.getSubmissionsByYear = async (req, res) => {
   try {
     const lastYear = new Date();
     lastYear.setFullYear(lastYear.getFullYear() - 1);
+
     const submissions = await Submission.find({ createdAt: { $gte: lastYear } })
-    .sort({ createdAt: -1 }).populate('by','username').lean(); 
-    const enhancedSubmissions = submissions.map(sub =>({
-      ...sub,
-      votesCount: sub.votes ? sub.votes.length : 0,
-      commentsCount: sub.comments ? sub.comments.length : 0,
-      createdAt: sub.createdAt
-    }));
-    res.status(200).json(enhancedSubmissions);
+      .sort({ createdAt: -1 })
+      .populate('by', 'username')
+      .lean();
+
+    const formatted = submissions.map(submissionToView);
+    res.status(200).json(formatted);
   } catch (err) {
-    console.error('Error getting year submissions', err);
+    console.error('Error getting year submissions:', err);
     res.status(500).json({ message: 'Failed to get year submissions' });
   }
 };
-

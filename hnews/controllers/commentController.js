@@ -1,11 +1,16 @@
 const Comment = require('../models/Comment');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
-const{ createNewComment, findCommentById, isThereAParent, getParentComment } 
+const{ createNewComment, findCommentById, isThereAParent
+  , getParentComment, findingChildComment } 
 = require('../utils/commentService');
 const { findSubmissionById, updateSubmissionCommentsArrayPush } 
 = require('../utils/submissionService');
 const { findUserById, addCommentToUserCommentArray } = require('../utils/UserService');
+const { commentViewModel } = require('../viewModels/commentViewModel');
+const { userViewModel } = require('../viewModels/userViewModel'); 
+const { submissionViewModel } = require('../viewModels/submissionViewModel'); 
+const { commentContextViewModel } = require('../viewModels/commentContextViewModel');
 
 // Create a comment
 exports.createComment = async (req, res) => {
@@ -23,32 +28,25 @@ exports.createComment = async (req, res) => {
     const user = await findUserById(req.user.id);
     await addCommentToUserCommentArray(user, comment);
     
-    res.status(201).json(comment);
+    res.status(201).json({message: 'Comment created successfully.'});
   } catch (err) {
     console.error('Error creating comment:', err);
     res.status(500).json({ error: 'Failed to create comment' });
   }
 };
 
-// Get all comments for a submission with compact info
+// Get all comments for a submission
 exports.getCommentsForSubmission = async (req, res) => {
   const { submissionId } = req.params;
 
   try {
     const comments = await Comment.find({ onSubmission: submissionId })
-      .sort({ createdAt: 1 }) // oldest first
-      .populate('userId', 'username') 
-      .lean(); //not mongoose-docs obj
+      .sort({ createdAt: 1 })
+      .populate('userId', 'username')
+      .lean();
 
-    const formattedComments = comments.map(comment => ({
-      _id: comment._id,
-      text: comment.text,
-      createdAt: comment.createdAt,
-      userId: comment.userId ? { _id: comment.userId._id, username: comment.userId.username } : null,
-      parent: comment.parent || null, // id of a parent
-      onSubmission: comment.onSubmission || null, // id 
-      votesCount: comment.votes ? comment.votes.length : 0, 
-    }));
+    
+    const formattedComments = comments.map(comment => commentViewModel(comment));
 
     res.status(200).json(formattedComments);
   } catch (err) {
@@ -120,66 +118,43 @@ exports.getParentComment = async (req, res) => {
 
     const currentComment = await findCommentById(commentId);
 
-    // Chacking for parent
-    if ((await isThereAParent(currentComment))) {
-
-     const parentComment = await getParentComment(currentComment);
-     const grandparent = await getParentComment(parentComment);
+    if (!(await isThereAParent(currentComment))) {
+      return null;
     }
-//todo
-    // Ищем "child" — то есть комментарий, который ссылается на parent
-    const nextComment = await Comment.findOne({ parent: parentComment._id })
-      .select('_id')
-      .lean();
 
-    // Ответ для фронта
-    const response = {
-      _id: parentComment._id,
-      text: parentComment.text,
-      createdAt: parentComment.createdAt,
-      userId: parentComment.userId ? { _id: parentComment.userId._id, username: parentComment.userId.username } : null,
-      parent: grandParentId,            // родитель родителя
-      context: parentComment.onSubmission, // контекст — сабмишн
-      next: nextComment ? nextComment._id : null, // первый найденный дочерний комментарий
-    };
+    const parentComment = await getParentComment(currentComment);
 
-    res.status(200).json(response);
+    const formattedComment = commentViewModel(parentComment);
 
+    res.status(200).json(formattedComment);
   } catch (err) {
     console.error('Error getting parent comment details:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
+ 
+  // Get context of a comment
+exports.getCommentContext = async (req, res) => {
+  try {
+    const { commentId } = req.params;
 
-  
-  
-  // Get context of a comment 
-  exports.getCommentContext = async (req, res) => {
-    try {
-      const { commentId } = req.params;
-  
-      const comment = await Comment.findById(commentId)
-      .populate('parent')
-      .populate('onSubmission');
-      if (!comment) {
-        return res.status(404).json({ message: 'Comment not found' });
-      }
+    const comment = await Comment.findById(commentId)
+      .populate('onSubmission'); // populating onSubmission for url
 
-      const relatedComments = await Comment.find({
-        onSubmission: comment.onSubmission._id
-      }).populate('parent');
-      
-  
-      res.status(200).json({
-        comment,
-        relatedComments
-      });
-      
-    } catch (err) {
-      console.error('Error getting comment context', err);
-      res.status(500).json({ error: 'Server error' });
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
     }
-  };
+
+    const relatedComments = await Comment.find({ onSubmission: comment.onSubmission._id });
+
+    const formattedContext = commentContextViewModel(comment, relatedComments);
+
+    res.status(200).json(formattedContext);
+  } catch (err) {
+    console.error('Error getting comment context', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
   
   //Get submission on which comment is done
   exports.getSubmissionForComment = async (req, res) => {
@@ -193,34 +168,34 @@ exports.getParentComment = async (req, res) => {
   
       const submission = await Submission.findById(comment.onSubmission);
   
-      res.status(200).json(submission);
+      res.status(200).json(submissionViewModel(submission));
     } catch (err) {
       console.error('Error getting submission for comment', err);
       res.status(500).json({ error: 'Server error' });
     }
   };
   
-  //Get comment owner (userInfo)
-  exports.getCommentOwner = async (req, res) => {
-    try {
-      const { commentId } = req.params;
-  
-      const comment = await Comment.findById(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: 'Comment not found' });
-      }
-  
-      const user = await User.findById(comment.userId).select('username karma about createdAt');
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.status(200).json(user);
-    } catch (err) {
-      console.error('Error getting comment owner', err);
-      res.status(500).json({ error: 'Server error' });
+  // Get comment owner
+exports.getCommentOwner = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
     }
-  };
+
+    const user = await User.findById(comment.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(userViewModel(user));
+  } catch (err) {
+    console.error('Error getting comment owner', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
   
   //Get previous comment (by createdAt)
   exports.getPreviousComment = async (req, res) => {
@@ -241,7 +216,7 @@ exports.getParentComment = async (req, res) => {
         return res.status(404).json({ message: 'No previous comment' });
       }
   
-      res.status(200).json(previousComment);
+      res.status(200).json(commentViewModel(previousComment));
     } catch (err) {
       console.error('Error getting previous comment', err);
       res.status(500).json({ error: 'Server error' });
@@ -259,27 +234,28 @@ exports.getParentComment = async (req, res) => {
       }
   
       const nextComment = await Comment.findOne({
-        createdAt: { $gt: comment.createdAt },// grater than
+        createdAt: { $gt: comment.createdAt },
         onSubmission: comment.onSubmission
-      }).sort({ createdAt: 1 }); 
+      }).sort({ createdAt: 1 });
   
       if (!nextComment) {
         return res.status(404).json({ message: 'No next comment' });
       }
   
-      res.status(200).json(nextComment);
+      res.status(200).json(commentViewModel(nextComment));
     } catch (err) {
       console.error('Error getting next comment', err);
       res.status(500).json({ error: 'Server error' });
     }
   };
   
+  
   // Reply to a comment (login needed)
   exports.replyToComment = async (req, res) => {
     try {
       const { parentId } = req.params;
       const { text } = req.body;
-      const userId = req.user.id; // from token
+      const userId = req.user.id;
   
       const parentComment = await Comment.findById(parentId);
       if (!parentComment) {
@@ -295,27 +271,30 @@ exports.getParentComment = async (req, res) => {
   
       await reply.save();
   
-      res.status(201).json(reply);
+      res.status(201).json(commentViewModel(reply));
     } catch (err) {
       console.error('Error replying to comment', err);
       res.status(500).json({ error: 'Server error' });
     }
   };
+  
 
   //Get children (replies) of a comment
-exports.getCommentChildren = async (req, res) => {
+  exports.getCommentChildren = async (req, res) => {
     try {
       const { commentId } = req.params;
   
-      // getting all comments where parent = our commentId
       const childrenComments = await Comment.find({ parent: commentId }).sort({ createdAt: 1 });
   
-      res.status(200).json(childrenComments);
+      const formattedChildren = childrenComments.map(c => commentViewModel(c)); // ❗ просто map без Promise.all
+  
+      res.status(200).json(formattedChildren);
     } catch (err) {
       console.error('Error getting child comments', err);
       res.status(500).json({ error: 'Server error' });
     }
   };
+  
   
 
   

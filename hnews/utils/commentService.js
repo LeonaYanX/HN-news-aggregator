@@ -113,11 +113,21 @@ async function createNewComment(userId, text, submissionId) {
     throw error;
   }
 };
-
+// returns nextComment or null
 async function findingChildComment(comment) {
   try {
     if(!comment){
-      throw {status};
+      throw {status:400, message:'Comment is required'};
+    }
+    
+    const nextComment = await Comment.findOne({ parent: comment._id })
+          .select('_id')
+          .lean();
+    if(!nextComment){
+      return null;
+    }
+    else{
+      return nextComment;
     }
     
   } catch (error) {
@@ -126,4 +136,4 @@ async function findingChildComment(comment) {
 }
 
 module.exports = {deleteCommentWithChildren, findCommentById, createNewComment
-  , isThereAParent, getParentComment };
+  , isThereAParent, getParentComment, findingChildComment};
