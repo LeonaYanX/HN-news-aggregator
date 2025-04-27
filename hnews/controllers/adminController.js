@@ -1,28 +1,17 @@
 const User = require('../models/User');
 const Submission = require('../models/Submission');
 const Comment = require('../models/Comment');
+const {findUserById, blockingUserByType, unblockUser} 
+= require('../utils/UserService');
+const {deleteSubmissionById} = require('../utils/submissionService');
 
 //Block user
 exports.blockUser = async (req,res)=>{
     const {userId} = req.params;
     const{blockingType} = req.body;  // blockingType 'temporary'(7 days),'permanent' 
     try{
-        const user = await User.findById(userId);
-        if(!user){
-            return res.status(404).json({message: 'User is not found'});
-        }
-        user.isBlocked = true;
-        if(blockingType==='temporary'){
-            const duration = 7*24*60*60*1000 ; // 7 days
-            user.blockedUntil = new Date(Date.now()+duration);
-        }
-        else if(blockingType==='permanent'){
-            user.blockedUntil = null; // forever
-        }
-        else {
-            return res.status(400).json({ message: 'Invalid blocking type' });
-          }
-        await user.save();
+       await findUserById(userId);
+       await blockingUserByType(userId, blockingType);
         res.status(200).json({ message: 'User blocked'});
     }catch(err){
         console.error('Block user error', err);
@@ -35,16 +24,11 @@ exports.unblockUser = async (req,res) => {
     const {userId} = req.params;
     // will it be better to write not body but req.params to give info by click
     try{
-        const user = await User.findById(userId);
-        if(!user){
-            return res.status(404).json({message: 'User is not found'});
-        }
-        user.isBlocked = false;
-        user.blockedUntil = null; // and not blocked is null too
+      
+       await findUserById(userId);
+       await unblockUser(userId);
 
-        await user.save();
-
-        res.status(200).json({ message: 'User unblocked' });
+       res.status(200).json({ message: 'User unblocked' });
 
     }catch(err){
         console.error('Unblock user error', err);
@@ -55,11 +39,11 @@ exports.unblockUser = async (req,res) => {
 exports.deleteSubmission = async (req, res) => {
     const {submissionId} = req.params;
     try {
-        const submission=await Submission.findByIdAndDelete(submissionId);
-        if(!submission){
-           return res.status(404).json({message: 'Submission not found'});
-        }
-        res.status(200).json({ message: 'Submission deleted'});
+       
+       await deleteSubmissionById(submissionId);
+
+       res.status(200).json({ message: 'Submission deleted'});
+       
       } catch (err) {
         console.error('Delete submission error', err);
         res.status(500).json({ error: 'Failed to delete submission' });
