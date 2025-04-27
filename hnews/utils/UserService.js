@@ -13,7 +13,7 @@ async function findUserById(userId) {
       }
   
       return user;
-      
+
     } catch (error) {
       //trowing error for controller to be able to give a right status
       throw error;
@@ -60,6 +60,117 @@ async function findUserById(userId) {
       throw error;
     }
   };
-  
+//Getting all users without passwords
+  async function getAllUsers() {
+    try{
+        const users = await User.find().select('-password');
+        if(!users){
+            throw {status: 500, message: 'Cannot get users list.'};
+        }
+        return users;
 
-module.exports = {findUserById, blockingUserByType, unblockUser};
+    }catch(err){
+        throw err;
+    }
+     
+  };
+//finding user by username, returns user with submissions, comments, favSubm, favComm
+  async function findUserByUsernameAdmin(username) {
+    try{ 
+        if(!username){
+            throw {status:400, message: 'Username is required.'};
+        }
+         const user = await User.findOne({ usernameLC: username.toLowerCase() })
+                    .select('-password')
+                    .populate('submissions comments favoriteSubmissions favoriteComments');
+              
+                  if (!user) {
+                   throw {status:404, message:'User is not found'};
+                  }
+
+                  return user;
+
+    }catch(err){throw err;}
+    
+  };
+
+  // boolean isAnExisting User method returns true if exists
+
+  async function isAnExistingUser(username, email) {
+    try {
+        if(!username){
+            throw {status: 400, message: 'Username is required.'};  
+        }
+        else if(!email){
+            throw {status: 400, message: 'Email is required.'};   
+        }
+        const usernameLC = username.toLowerCase();
+        const existingUser = await User.findOne({ $or: [{usernameLC:usernameLC}, {email}] });
+           
+        return !!existingUser; // true(if exists) false(if not)
+        
+    } catch (error) {
+        throw error;
+    }
+    
+  };
+
+  //Creating a new User with username, email, password , role='guest'
+  async function createNewUser(username, email, password, role='guest') {
+    try {
+        if(!username || !email || !password){
+            throw {status:400, message:'Username, password and email is required.'}
+        }
+       const newUser = new User({username, email, password, role});
+
+        await newUser.save();
+
+        return true;
+
+    } catch (error) {
+       throw error; 
+    }
+  };
+
+  //find user by username for login
+  async function isAnExistingUserByUsername(username) {
+    try {
+        if(!username){
+            throw {status:400, message: 'Username is required.'};
+        }
+        const usernameLc = username.toLowerCase();
+         const user = await User.findOne({usernameLC : usernameLc});
+             
+         if(!user){
+            return false
+         }
+         else{
+            return user;
+         }
+
+    } catch (error) {
+        throw error;
+    }
+  };
+
+  //Checking users password returns true false
+
+  async function isPassMatching(password) {
+    try {
+        if(!password){
+            throw {status:400, message:'Password required.'};
+        }
+
+        const isMatch = await user.comparePassword(password);
+
+      return !!isMatch;
+        
+    } catch (error) {
+        throw error;
+    }
+    
+  }
+
+module.exports = {findUserById, blockingUserByType
+    , unblockUser, getAllUsers, findUserByUsername: findUserByUsernameAdmin
+    , isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching};

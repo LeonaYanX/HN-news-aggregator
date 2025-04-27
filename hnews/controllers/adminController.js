@@ -1,9 +1,7 @@
-const User = require('../models/User');
-const Submission = require('../models/Submission');
-const Comment = require('../models/Comment');
-const {findUserById, blockingUserByType, unblockUser} 
+const {findUserById, blockingUserByType, unblockUser, getAllUsers, findUserByUsernameAdmin} 
 = require('../utils/UserService');
 const {deleteSubmissionById} = require('../utils/submissionService');
+const {findCommentById, deleteCommentWithChildren} = require('../utils/commentService');
 
 //Block user
 exports.blockUser = async (req,res)=>{
@@ -43,7 +41,7 @@ exports.deleteSubmission = async (req, res) => {
        await deleteSubmissionById(submissionId);
 
        res.status(200).json({ message: 'Submission deleted'});
-       
+
       } catch (err) {
         console.error('Delete submission error', err);
         res.status(500).json({ error: 'Failed to delete submission' });
@@ -54,10 +52,8 @@ exports.deleteSubmission = async (req, res) => {
     exports.deleteComment = async (req, res) => {
         const { commentId } = req.params;
         try {
-          const comment = await Comment.findByIdAndDelete(commentId);
-          if(!comment){
-            return res.status(404).json({message: 'Comment not found'});
-          }
+          const comment = await findCommentById(commentId);
+          await deleteCommentWithChildren(commentId); 
           res.status(200).json({ message: 'Comment deleted' , comment});
         } catch (err) {
             console.error('Delete comment error', err);
@@ -69,10 +65,7 @@ exports.deleteSubmission = async (req, res) => {
 
       exports.getAllUsers = async (req,res) => {
         try{
-            const users = await User.find().select('-password');
-            if(!users){
-                return res.status(400).json({message: 'Cannot get users list'});
-            }
+            const users = await getAllUsers();
             res.status(200).json({message: 'User list', users});
         }catch(err){
             console.error('Error getting users list', err);
@@ -80,22 +73,12 @@ exports.deleteSubmission = async (req, res) => {
         }
       };
 
-      //post user by username
+      //find user by username
       exports.findUserByUsername = async (req, res) => {
-        const { username } = req.body;
-      
-        if (!username) {
-          return res.status(400).json({ error: 'Username is required' });
-        }
-      
         try {
-          const user = await User.findOne({ username: username.toLowerCase() })
-            .select('-password')
-            .populate('submissions comments favoriteSubmissions favoriteComments');
-      
-          if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-          }
+          const { username } = req.body;
+
+          const user = await findUserByUsernameAdmin(username);
       
           res.status(200).json({ user });
         } catch (err) {

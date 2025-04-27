@@ -1,7 +1,8 @@
 const User = require('../models/User');
-const bcrypt = require('bcrypt');
 const {generateTokens} = require('../utils/token');
 const RefreshToken = require('../models/refreshToken');
+const {isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching}
+ = require('../utils/UserService');
 
 //registration of the user
 
@@ -10,18 +11,17 @@ exports.register = async (req,res)=>{
     try{
      const {username, email, password, role='guest'}= req.body;
 
-    //IsExisting
+     //IsExisting
 
-    const existingUser = await User.findOne({ $or: [{username}, {email}] });
-    if(existingUser){
+      if(await isAnExistingUser(username, email)){
         res.status(400).json({error: 'Username or email is already taken.'});
-    }
+      }
+   
      // new user creation
      
-     const newUser = new User({username, email, password, role});
-     await newUser.save();
+    await createNewUser({username, email, password, role});
 
-     //res
+    
      res.status(201).json({message: 'User registred successfully'});
 }
 catch(err){
@@ -35,16 +35,18 @@ exports.login = async(req,res)=>{
     try{
         const {username , password} = req.body;
         //finding user by username
-     const user = await User.findOne({username});
-     if(!user){
+     
+     if(!(await isAnExistingUserByUsername(username))){
         return res.status(404).json({error: 'User is not found, register first.'});
      }
+     const user = await isAnExistingUserByUsername(username);
+
        // checking the password
 
-       const isMatch = await user.comparePassword(password);
-       if(!isMatch){
+       if(!(await isPassMatching(password))){
         return res.status(401).json({error: 'invalid credentials'});
        } 
+       
        if(user.isBlocked){
 
         if(user.blockedUntil && user.blockedUntil> Date.now()){
