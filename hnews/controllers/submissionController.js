@@ -1,23 +1,20 @@
 const Submission = require('../models/Submission');
 const User = require('../models/User');
+const {userToView} = require('../viewModels/userViewModel');
 const { submissionToView } = require('../utils/submissionToView');
-
+const{createNewSubmission, findSubmissionBySpecific, findSubmissionById
+  ,addToSubmissionVotesArray, unvoteSubmission, findSubmissionfromCreatedAt }
+=require('../utils/submissionService');
+const {findUserById} = require('../utils/UserService');
 // Create a new submission
 exports.createStory = async (req, res) => {
   const { title, url, text, specific } = req.body;
 
   try {
-    const submission = new Submission({
-      by: req.user.id,
-      title,
-      url,
-      text,
-      specific: specific || 'story',
-    });
-
-    await submission.save();
-    await User.findByIdAndUpdate(req.user.id, { $push: { submissions: submission._id } });
-
+    if(!specific){
+      specific='story';
+    }
+    const submission = await createNewSubmission(req.user.id,title, url, text, specific); 
     res.status(201).json(submissionToView(submission));
   } catch (err) {
     console.error('Error creating submission:', err);
@@ -29,10 +26,8 @@ exports.createStory = async (req, res) => {
 async function getSubmissionsBySpecific(res, specificValue, sortOrder = -1) {
   try {
     const filter = specificValue !== undefined ? { specific: specificValue } : {};
-    const submissions = await Submission.find(filter)
-      .sort({ createdAt: sortOrder })
-      .populate('by', 'username')
-      .lean();
+
+    const submissions = await findSubmissionBySpecific(filter);
 
     const formatted = submissions.map(submissionToView);
     res.status(200).json(formatted);
@@ -62,18 +57,13 @@ exports.voteStory = async (req, res) => {
   const { submissionId } = req.params;
 
   try {
-    const submission = await Submission.findById(submissionId);
-
-    if (!submission) {
-      return res.status(404).json({ error: 'Submission not found' });
-    }
+    const submission = await findSubmissionById(submissionId);
 
     if (submission.votes.includes(req.user.id)) {
       return res.status(400).json({ error: 'You have already voted' });
     }
 
-    submission.votes.push(req.user.id);
-    await submission.save();
+   await addToSubmissionVotesArray(req.user.id);
 
     res.status(200).json({ message: 'Voted successfully' });
   } catch (err) {
@@ -87,19 +77,9 @@ exports.unvoteSubmission = async (req, res) => {
   const { submissionId } = req.params;
 
   try {
-    const submission = await Submission.findById(submissionId);
-
-    if (!submission) {
-      return res.status(404).json({ error: 'Submission not found' });
-    }
-
-    const voteIndex = submission.votes.indexOf(req.user.id);
-    if (voteIndex === -1) {
-      return res.status(400).json({ error: 'You have not voted for this submission' });
-    }
-
-    submission.votes.splice(voteIndex, 1);
-    await submission.save();
+    
+    const submission = await findSubmissionById(submissionId);
+       await unvoteSubmission(submission, req.user.id);
 
     res.status(200).json({ message: 'Vote removed successfully' });
   } catch (err) {
@@ -109,30 +89,21 @@ exports.unvoteSubmission = async (req, res) => {
 };
 
 // Get submission owner info
-exports.getSubmissionOwner = (req, res) => {
+exports.getSubmissionOwner = async (req, res) => {
   const { submissionId } = req.params;
 
-  Submission.findById(submissionId).lean()
-    .then(submission => {
-      if (!submission) {
-        return res.status(404).json({ message: 'Submission not found' });
-      }
+  try {
+    const submission = await findSubmissionById(submissionId);
+    const user = await findUserById(submission.by);
 
-      return User.findById(submission.by).lean();
-    })
-    .then(user => {
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      const ownerView = userToView(user);
-      res.status(200).json(ownerView);
-    })
-    .catch(err => {
-      console.error('Error getting submission owner:', err);
-      res.status(500).json({ message: 'Failed to get submission owner' });
-    });
+    const ownerView = userToView(user);
+    res.status(200).json(ownerView);
+  } catch (error) {
+    console.error('Error getting submission owner:', error);
+    res.status(500).json({ message: 'Failed to get submission owner' });
+  }
 };
+
 
 // Get submissions from the past day
 exports.getSubmissionsByDay = async (req, res) => {
@@ -140,10 +111,7 @@ exports.getSubmissionsByDay = async (req, res) => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const submissions = await Submission.find({ createdAt: { $gte: yesterday } })
-      .sort({ createdAt: -1 })
-      .populate('by', 'username')
-      .lean();
+    const submissions = await findSubmissionfromCreatedAt(yesterday);
 
     const formatted = submissions.map(submissionToView);
     res.status(200).json(formatted);
@@ -159,10 +127,7 @@ exports.getSubmissionsByMonth = async (req, res) => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
 
-    const submissions = await Submission.find({ createdAt: { $gte: lastMonth } })
-      .sort({ createdAt: -1 })
-      .populate('by', 'username')
-      .lean();
+    const submissions = await findSubmissionfromCreatedAt(lastMonth);
 
     const formatted = submissions.map(submissionToView);
     res.status(200).json(formatted);
@@ -178,10 +143,7 @@ exports.getSubmissionsByYear = async (req, res) => {
     const lastYear = new Date();
     lastYear.setFullYear(lastYear.getFullYear() - 1);
 
-    const submissions = await Submission.find({ createdAt: { $gte: lastYear } })
-      .sort({ createdAt: -1 })
-      .populate('by', 'username')
-      .lean();
+    const submissions = await findSubmissionfromCreatedAt(lastYear)
 
     const formatted = submissions.map(submissionToView);
     res.status(200).json(formatted);

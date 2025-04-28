@@ -1,8 +1,5 @@
-const Comment = require('../models/Comment');
-const Submission = require('../models/Submission');
-const User = require('../models/User');
 const{ createNewComment, findCommentById, isThereAParent
-  , getParentComment, findingChildComment, getAllCommentsOfSubmission
+  , getParentComment, getAllCommentsOfSubmission
   ,updateCommentVotes, findByIdWithSubmUrlAccess, findPrevComment
   ,findAllChildComments} 
 = require('../utils/commentService');
