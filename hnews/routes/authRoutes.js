@@ -1,14 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { registerValidation, loginValidation  } = require('../validators/authValidators');
+const validateRequest = require('../middleware/validateRequest');
+
 
 //POST /api/auth/register new user registration
 
-router.post('/register', authController.register);
+router.post('/register',registerValidation,validateRequest, authController.register);
 
 //POST /api/auth/login user login
 
-router.post('/login', authController.login);
+router.post('/login',loginValidation ,validateRequest, authController.login);
 
 //POST /api/auth/refresh access token refreshing route
 
