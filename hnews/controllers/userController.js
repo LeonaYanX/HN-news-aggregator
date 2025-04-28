@@ -4,6 +4,8 @@ const Submission = require('../models/Submission');
 const Comment = require('../models/Comment');
 const {deleteCommentWithChildren} = require('../utils/commentService');
 
+const { userToView } = require('../viewModels/userViewModel');
+
 // Get user profile
 exports.getProfile = async (req, res) => {
   try {
@@ -13,7 +15,7 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.status(200).json(user);
+    res.status(200).json(userToView(user));
   } catch (err) {
     console.error('Error getting user profile:', err);
     res.status(500).json({ error: 'Failed to get profile' });
@@ -197,3 +199,25 @@ exports.deleteOwnSubmission = async (req, res) => {
       res.status(500).json({ error: 'Server error' });
     }
   };
+
+  // Vote for user (increase karma)
+exports.voteUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { karma: 1 } },
+      { new: true } // return updated user
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ message: 'User upvoted', karma: user.karma });
+  } catch (err) {
+    console.error('Error upvoting user:', err);
+    res.status(500).json({ error: 'Failed to upvote user' });
+  }
+};

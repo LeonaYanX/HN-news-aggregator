@@ -2,7 +2,9 @@ const Comment = require('../models/Comment');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
 const{ createNewComment, findCommentById, isThereAParent
-  , getParentComment, findingChildComment } 
+  , getParentComment, findingChildComment, getAllCommentsOfSubmission
+  ,updateCommentVotes, findByIdWithSubmUrlAccess, findPrevComment
+  ,findAllChildComments} 
 = require('../utils/commentService');
 const { findSubmissionById, updateSubmissionCommentsArrayPush } 
 = require('../utils/submissionService');
@@ -39,13 +41,9 @@ exports.createComment = async (req, res) => {
 exports.getCommentsForSubmission = async (req, res) => {
   const { submissionId } = req.params;
 
-  try {
-    const comments = await Comment.find({ onSubmission: submissionId })
-      .sort({ createdAt: 1 })
-      .populate('userId', 'username')
-      .lean();
+  try { 
+    const comments = await getAllCommentsOfSubmission(submissionId);
 
-    
     const formattedComments = comments.map(comment => commentViewModel(comment));
 
     res.status(200).json(formattedComments);
@@ -61,21 +59,14 @@ exports.voteComment = async (req, res) => {
     const { commentId } = req.params; // by click
   
     try {
-      const comment = await Comment.findById(commentId);
-  
-      if (!comment) {
-        return res.status(404).json({ error: 'Comment not found' });
-      }
-  
+      const comment = await findCommentById(commentId);
+
       // checking if already voted
       if (comment.votes.includes(req.user.id)) {
         return res.status(400).json({ error: 'You have already voted for this comment' });
       }
   
-      comment.votes.push(req.user.id);
-
-      await comment.save();
-  
+      await updateCommentVotes(comment, req.user.id);
       res.status(200).json({ message: 'Voted for comment successfully' });
     } catch (err) {
       console.error('Error voting for comment:', err);
@@ -88,21 +79,8 @@ exports.unvoteComment = async (req, res) => {
   const { commentId } = req.params;
 
   try {
-    const comment = await Comment.findById(commentId);
-
-    if (!comment) {
-      return res.status(404).json({ error: 'Comment not found' });
-    }
-
-    
-    const voteIndex = comment.votes.indexOf(req.user.id);
-    if (voteIndex === -1) {
-      return res.status(400).json({ error: 'You have not voted for this comment' });
-    }
-
-    
-    comment.votes.splice(voteIndex, 1);
-    await comment.save();
+    const comment = await findCommentById(commentId);
+    await updateCommentVotes(comment, req.user.id, -1);
 
     res.status(200).json({ message: 'Vote removed from comment successfully' });
   } catch (err) {
@@ -111,7 +89,7 @@ exports.unvoteComment = async (req, res) => {
   }
 };
 
-// Get detailed parent comment info
+// Get parent comment info
 exports.getParentComment = async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -137,15 +115,8 @@ exports.getParentComment = async (req, res) => {
 exports.getCommentContext = async (req, res) => {
   try {
     const { commentId } = req.params;
-
-    const comment = await Comment.findById(commentId)
-      .populate('onSubmission'); // populating onSubmission for url
-
-    if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
-    }
-
-    const relatedComments = await Comment.find({ onSubmission: comment.onSubmission._id });
+    const comment = await findByIdWithSubmUrlAccess(commentId); 
+    const relatedComments = await getAllCommentsOfSubmission(comment.onSubmission);
 
     const formattedContext = commentContextViewModel(comment, relatedComments);
 
@@ -161,12 +132,12 @@ exports.getCommentContext = async (req, res) => {
     try {
       const { commentId } = req.params;
   
-      const comment = await Comment.findById(commentId);
-      if (!comment || !comment.onSubmission) {
-        return res.status(404).json({ message: 'Comment or associated submission not found' });
+      const comment = await findCommentById(commentId);
+      if (!comment.onSubmission) {
+        return res.status(404).json({ message: 'Associated submission not found' });
       }
   
-      const submission = await Submission.findById(comment.onSubmission);
+      const submission = await findSubmissionById(comment.onSubmission);
   
       res.status(200).json(submissionViewModel(submission));
     } catch (err) {
@@ -179,16 +150,9 @@ exports.getCommentContext = async (req, res) => {
 exports.getCommentOwner = async (req, res) => {
   try {
     const { commentId } = req.params;
+    const comment = await findCommentById(commentId);
 
-    const comment = await Comment.findById(commentId);
-    if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
-    }
-
-    const user = await User.findById(comment.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    const user = await findUserById(comment.userId);
 
     res.status(200).json(userViewModel(user));
   } catch (err) {
@@ -201,20 +165,9 @@ exports.getCommentOwner = async (req, res) => {
   exports.getPreviousComment = async (req, res) => {
     try {
       const { commentId } = req.params;
-  
-      const comment = await Comment.findById(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: 'Comment not found' });
-      }
-  
-      const previousComment = await Comment.findOne({
-        createdAt: { $lt: comment.createdAt },
-        onSubmission: comment.onSubmission
-      }).sort({ createdAt: -1 }); // taking last before our 
-  
-      if (!previousComment) {
-        return res.status(404).json({ message: 'No previous comment' });
-      }
+ 
+      const comment = await findCommentById(commentId);
+      const previousComment = await findPrevComment(comment);
   
       res.status(200).json(commentViewModel(previousComment));
     } catch (err) {
@@ -227,21 +180,9 @@ exports.getCommentOwner = async (req, res) => {
   exports.getNextComment = async (req, res) => {
     try {
       const { commentId } = req.params;
-  
-      const comment = await Comment.findById(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: 'Comment not found' });
-      }
-  
-      const nextComment = await Comment.findOne({
-        createdAt: { $gt: comment.createdAt },
-        onSubmission: comment.onSubmission
-      }).sort({ createdAt: 1 });
-  
-      if (!nextComment) {
-        return res.status(404).json({ message: 'No next comment' });
-      }
-  
+   
+      const comment = await findCommentById(commentId);
+      const nextComment = await getNextComment(comment); 
       res.status(200).json(commentViewModel(nextComment));
     } catch (err) {
       console.error('Error getting next comment', err);
@@ -257,19 +198,9 @@ exports.getCommentOwner = async (req, res) => {
       const { text } = req.body;
       const userId = req.user.id;
   
-      const parentComment = await Comment.findById(parentId);
-      if (!parentComment) {
-        return res.status(404).json({ message: 'Parent comment not found' });
-      }
-  
-      const reply = new Comment({
-        userId: userId,
-        text: text,
-        parent: parentComment._id,
-        onSubmission: parentComment.onSubmission,
-      });
-  
-      await reply.save();
+      const parentComment = await findCommentById(parentId);
+      const reply = await createNewComment(userId, text, parentComment.onSubmission
+        , parentComment._id  );
   
       res.status(201).json(commentViewModel(reply));
     } catch (err) {
@@ -284,9 +215,9 @@ exports.getCommentOwner = async (req, res) => {
     try {
       const { commentId } = req.params;
   
-      const childrenComments = await Comment.find({ parent: commentId }).sort({ createdAt: 1 });
+      const childrenComments = await findAllChildComments(commentId);
   
-      const formattedChildren = childrenComments.map(c => commentViewModel(c)); // ❗ просто map без Promise.all
+      const formattedChildren = childrenComments.map(c => commentViewModel(c));
   
       res.status(200).json(formattedChildren);
     } catch (err) {

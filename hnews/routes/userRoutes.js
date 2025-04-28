@@ -22,5 +22,8 @@ router.delete('/favorites/submissions/:submissionId', userController.unfavoriteS
 router.delete('/favorites/comments/:commentId', userController.unfavoriteComment);
 //DELETE /api/user/submissions/:submissionId deleting own submission
 router.delete('/submissions/:submissionId', userController.deleteOwnSubmission);
+//PUT /api/users/:userId/vote voteing for user
+router.put('/:userId/vote', userController.voteUser);
+
 
 module.exports = router;
