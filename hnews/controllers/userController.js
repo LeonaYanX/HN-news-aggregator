@@ -3,18 +3,15 @@ const bcrypt = require('bcrypt');
 const Submission = require('../models/Submission');
 const Comment = require('../models/Comment');
 const {deleteCommentWithChildren} = require('../utils/commentService');
+const {updateUserAbout, findUserById, addSubmissionToFavorites} 
+= require('../utils/UserService');
 
 const { userToView } = require('../viewModels/userViewModel');
 
 // Get user profile
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password'); //without password
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
+    const user = await findUserById(req.user.id);
     res.status(200).json(userToView(user));
   } catch (err) {
     console.error('Error getting user profile:', err);
@@ -27,14 +24,9 @@ exports.updateProfile = async (req, res) => {
   const { about } = req.body;
 
   try {
-    const user = await User.findById(req.user.id);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    user.about = about;
-    await user.save();
+    const user = await findUserById(req.user.id);
+    
+    await updateUserAbout(about, user);
 
     res.status(200).json({ message: 'Profile updated' });
   } catch (err) {
@@ -47,9 +39,9 @@ exports.updateProfile = async (req, res) => {
 exports.favoriteSubmission = async (req, res) => {
   const { submissionId } = req.params; // on click
 
-  try {
-    await User.findByIdAndUpdate(req.user.id, { $addToSet: { favoriteSubmissions: submissionId } });
-
+  try { 
+    await addSubmissionToFavorites(submissionId, req.user.id );
+    
     res.status(200).json({ message: 'Added to favorites' });
   } catch (err) {
     console.error('Error favoriting submission:', err);
@@ -58,6 +50,7 @@ exports.favoriteSubmission = async (req, res) => {
 };
 
 // Favorite a comment
+//todo utils adding from here
 exports.favoriteComment = async (req, res) => {
   const { commentId } = req.params;
 

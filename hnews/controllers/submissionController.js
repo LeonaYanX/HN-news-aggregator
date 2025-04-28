@@ -1,5 +1,3 @@
-const Submission = require('../models/Submission');
-const User = require('../models/User');
 const {userToView} = require('../viewModels/userViewModel');
 const { submissionToView } = require('../utils/submissionToView');
 const{createNewSubmission, findSubmissionBySpecific, findSubmissionById

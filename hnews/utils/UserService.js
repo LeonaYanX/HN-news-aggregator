@@ -182,9 +182,39 @@ async function findUserById(userId) {
         throw error;
     }
     
-  }
+  };
+  //update user's about field
+  async function updateUserAbout(about, user) {
+    try {
+      if(!about || !user){
+        throw {status:400, message:'About and user required.'};
+      }
+      user.about = about;
+      await user.save();
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  };
+  //Add to favorites
+  async function addSubmissionToFavorites(submissionId, userId) {
+    try {
+      if(!submissionId || !userId){
+        throw {status:400, message:'UserId and submissionId required.'};
+      }
+
+      await User.findByIdAndUpdate(userId,
+        { $addToSet: { favoriteSubmissions: submissionId } });
+
+      return true;
+
+    } catch (error) {
+      throw error;
+    }
+  };
 
 module.exports = {findUserById, blockingUserByType
     , unblockUser, getAllUsers, findUserByUsername: findUserByUsernameAdmin
     , isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching
-    ,addCommentToUserCommentArray};
+    ,addCommentToUserCommentArray, updateUserAbout, addSubmissionToFavorites};
