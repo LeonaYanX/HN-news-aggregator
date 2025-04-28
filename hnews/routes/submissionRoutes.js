@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const submissionController = require('../controllers/submissionController');
-const {verifyToken} = require('../middleware/authMiddleware');
+const { verifyToken } = require('../middleware/authMiddleware');
 const { authenticate } = require('../middleware/authenticate');
 
 //POST /api/submission/  creating new submission
@@ -20,7 +20,7 @@ router.post('/:submissionId/unvote', verifyToken, authenticate, submissionContro
 router.get('/past', submissionController.getPastSubmissions);
 
 //GET /api/submission/new new submissions 
-router.get('/new', submissionController.getNewSubmissions);
+router.get('/new', submissionController.getStories);
 
 //GET /api/submission/ask submissions type - ask
 router.get('/ask', submissionController.getAskSubmissions);

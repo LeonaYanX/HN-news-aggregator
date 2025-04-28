@@ -4,10 +4,8 @@ const {isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatchi
  = require('../utils/UserService');
 
 //registration of the user
-
 exports.register = async (req,res)=>{
 
-    try{
      const {username, email, password, role='guest'}= req.body;
 
      //IsExisting
@@ -22,17 +20,11 @@ exports.register = async (req,res)=>{
 
     
      res.status(201).json({message: 'User registred successfully'});
-}
-catch(err){
-    console.log('registration error' + err.message);
-    res.status(500).json({error: 'Registration failed' });
-}
-
 };
 
 exports.login = async(req,res)=>{
-    try{
         const {username , password} = req.body;
+
         //finding user by username
      
      if(!(await isAnExistingUserByUsername(username))){
@@ -63,15 +55,9 @@ exports.login = async(req,res)=>{
         message: 'Successful login',
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken});
-    }
-    catch(err){
-        console.log('Login failed' + err);
-        res.status(500).json({error: 'Login failed'});
-    }
 };
 
 exports.refreshAccessToken = async (res,req)=>{
-    try{
         const { refreshToken } = req.body;
         if(!refreshToken){
             return res.status(400).json({message: 'Refresh token is required'});
@@ -89,25 +75,16 @@ exports.refreshAccessToken = async (res,req)=>{
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       });
-
-    }catch(err){
-        console.error('Refresh access token error:', err);
-    res.status(500).json({ error: 'Failed to refresh token' });
-    }
 };
 
 // logaout and deleting refresh token
 exports.logout = async (req, res)=>{
 
-    try{
+
         const { refreshToken } = req.body;
         if(!refreshToken){
             return res.status(400).json({message: 'Refresh token required.'});
         }
         await RefreshToken.deleteOne({token: refreshToken});
         res.status(201).json({message: 'Logged out successfully.'});
-    }catch(err){
-        console.log('Logout error' + err);
-        res.status(500).json({error: 'Logout failed.'});
-    }
 };

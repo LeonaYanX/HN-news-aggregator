@@ -1,3 +1,5 @@
+require('express-async-errors');
+const errorHandler = require('./middleware/errorHandler');
 const express = require('express');
 const connectDb = require('./config/db');
 const dotenv = require('dotenv');
@@ -10,6 +12,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const commentsRoutes = require('./routes/commentsRoutes');
 const userRoutes = require('./routes/userRoutes');
+
+
 dotenv.config();
 
 const app = express();
@@ -27,6 +31,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/submission', submissionRoutes);
 app.use('/api/comment', commentsRoutes);
 app.use('/api/user', userRoutes);
+
+// after routes
+app.use(errorHandler);
 
 //Starting unblock scheduller
 
