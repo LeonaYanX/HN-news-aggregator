@@ -1,22 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const submissionController = require('../controllers/submissionController');
-const { verifyToken } = require('../middleware/authMiddleware');
-const { authenticate } = require('../middleware/authenticate');
+const {requireAuth} = require('../middleware/authMiddleware');
 const { createSubmissionValidation, submissionIdValidation } = require('../validators/submissionValidators');
 const validateRequest = require('../middleware/validateRequest');
 
 // POST /api/submission/ - creating new submission
-router.post('/', verifyToken, authenticate, createSubmissionValidation, validateRequest, submissionController.createStory);
+router.post('/', requireAuth, createSubmissionValidation, validateRequest, submissionController.createStory);
 
 // GET /api/submission/ - getting all submissions
 router.get('/', submissionController.getStories);
 
 // POST /api/submission/:submissionId/vote - voting for submission
-router.post('/:submissionId/vote', verifyToken, authenticate, submissionIdValidation, validateRequest, submissionController.voteStory);
+router.post('/:submissionId/vote', requireAuth, submissionIdValidation, validateRequest, submissionController.voteStory);
 
 // POST /api/submission/:submissionId/unvote - unvote submission
-router.post('/:submissionId/unvote', verifyToken, authenticate, submissionIdValidation, validateRequest, submissionController.unvoteSubmission);
+router.post('/:submissionId/unvote', requireAuth, submissionIdValidation, validateRequest, submissionController.unvoteSubmission);
 
 // GET /api/submission/past - past submissions
 router.get('/past', submissionController.getPastSubmissions);

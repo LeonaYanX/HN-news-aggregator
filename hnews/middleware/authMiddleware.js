@@ -1,34 +1,52 @@
+// middleware/authMiddleware.js
+
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
-const { generateTokens } = require('../utils/token');
-const RefreshToken = require('../models/refreshToken');
-exports.verifyToken = (req,res,next)=>{
-    const token = req.headers['authorization']?.split(' ')[1]; 
-    if(!token){
-        return res.status(403).json({error:'Token is required'});
-    }
-    try{
-        const decoded = jwt.verify(token,jwtConfig.secretKey);
-        // Decode the token and store the decoded user data on req.user to use it again then
-        req.user=decoded;
-        next();
-    }catch(error){
-        res.status(401).json({error:'Invalid token'});
-    }
-};
+const { findUserById } = require('../utils/UserService');
 
+/**
+ * requireAuth — middleware для защиты приватных роутов.
+ *
+ * 1) Извлекает JWT из заголовка Authorization
+ * 2) Проверяет его подпись и срок годности
+ * 3) Подтягивает пользователя из БД (findUserById)
+ * 4) Кладёт в req.user ({ id, username, role }) и вызывает next()
+ * 5) При любой ошибке — возвращает 401 Unauthorized
+ */
+async function requireAuth(req, res, next) {
+  // 1. Достаём заголовок
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token is required in Authorization header' });
+  }
 
-// token update function (If we need to extend the deadline)
+  // 2. Отсекаем префикс 'Bearer ' и обрезаем пробелы
+  const token = authHeader.slice(7).trim();
 
-exports.refreshToken = async (refreshT)=>{
-    try{
-    const storedToken = await RefreshToken.findOne({token: refreshT});
-    if(!storedToken || storedToken.expiresAt<Date.now()){
-        throw new Error('Refresh token is invalid or expired');
+  try {
+    // 3. Верифицируем токен: проверяем подпись и exp
+    const decoded = jwt.verify(token, jwtConfig.secretKey);
+
+    // 4. Проверяем, что пользователь есть в БД
+    const user = await findUserById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
     }
-    return generateTokens(storedToken.userId);
-    }catch(err){
-        console.log('Error in refreshToken authMiddleware');
-        throw new Error('Failed to refresh token: User not found or token invalid');
-    }
-};
+
+    // 5. Кладём минимальный объект пользователя в req.user
+    req.user = {
+      id: user._id.toString(),
+      username: user.username,
+      role: user.role
+    };
+
+    // 6. Продолжаем цепочку
+    next();
+  } catch (err) {
+    // Если подпись неверна или токен просрочен
+    console.error('Authentication error:', err);
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+module.exports = { requireAuth };

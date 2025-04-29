@@ -1,22 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const commentController = require('../controllers/commentController');
-const { verifyToken } = require('../middleware/authMiddleware');
-const { authenticate } = require('../middleware/authenticate');
+const { requireAuth } = require('../middleware/authMiddleware');
 const { createCommentValidation, commentIdValidation }
  = require('../validators/commentValidators');
 const validateRequest = require('../middleware/validateRequest');
 
 //POST /api/comment/submissions/:submissionId/comments   create comment
-router.post('/submissions/:submissionId/comments',authenticate
+router.post('/submissions/:submissionId/comments',requireAuth
     ,createCommentValidation,validateRequest, commentController.createComment);
 //GET /api/comment/:submissionId  getting all comments for submission
 router.get('/:submissionId', commentController.getCommentsForSubmission);
 //POST api/comment/:commentId/vote voting for comment
-router.post('/:commentId/vote',verifyToken, authenticate
-    ,commentIdValidation,validateRequest, commentController.voteComment);
+router.post('/:commentId/vote',requireAuth,
+    commentIdValidation,validateRequest, commentController.voteComment);
 // api/comment/:commentId/unvote Unvote comment
-router.post('/:commentId/unvote', verifyToken, authenticate,
+router.post('/:commentId/unvote', requireAuth ,
     commentIdValidation,validateRequest, commentController.unvoteComment);
 //GET api/comment/:commentId/parent getting parent comment of our comment
 router.get('/:commentId/parent',commentIdValidation,validateRequest,
@@ -37,7 +36,7 @@ router.get('/:commentId/previous',commentIdValidation,validateRequest,
 router.get('/:commentId/next', commentIdValidation,validateRequest,
     commentController.getNextComment);
 //POST api/comment/:parentId/reply reply to the comment 
-router.post('/:parentId/reply', verifyToken, authenticate,commentIdValidation,
+router.post('/:parentId/reply', requireAuth , commentIdValidation,
     validateRequest, commentController.replyToComment);
 // GET api/comment/:commentId/children getting all chindren(replies) for the comment
 router.get('/:commentId/children',commentIdValidation,validateRequest,

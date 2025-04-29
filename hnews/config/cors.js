@@ -1,7 +1,7 @@
 const corsOptions = {
   origin: [
-    'https://react-domain.com',
-    'https://localhost:5173.com',
+    'http://localhost:3000',
+    
   ], // List of trusted domains.
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods.
   allowedHeaders: [

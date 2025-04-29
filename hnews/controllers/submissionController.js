@@ -7,41 +7,95 @@ const {findUserById} = require('../utils/UserService');
 
 // Create a new submission
 exports.createStory = async (req, res) => {
-  const { title, url, text, specific } = req.body;
-
-
-    if(!specific){
-      specific='story';
-    }
-    const submission = await createNewSubmission(req.user.id,title, url, text, specific); 
+  let { title, url, text, specific } = req.body; // use let
+  // if !specific 'story'
+  if (!specific) {
+    specific = 'story';
+  }
+  try {
+    const submission = await createNewSubmission(req.user.id, title, url, text, specific);
     res.status(201).json(submissionToView(submission));
+  } catch (error) {
+    console.error('Ошибка создания публикации:', error);
+    res.status(500).json({ error: 'Ошибка создания публикации' });
+  }
 };
+
 
 // Helper to get submissions by specific type
-async function getSubmissionsBySpecific(res, specificValue, sortOrder = -1) {
-
-    const filter = specificValue !== undefined ? { specific: specificValue } : {};
-
-    const submissions = await findSubmissionBySpecific(filter);
-
-    const formatted = submissions.map(submissionToView);
-    res.status(200).json(formatted);
-};
+async function fetchAndFormatSubmissions(filter = {}, sortOrder = -1) {
+  const submissions = await findSubmissionBySpecific(filter, sortOrder);
+  return submissions.map(submissionToView);
+}
 
 // List of stories (latest first - new)
-exports.getStories = async (req, res) => getSubmissionsBySpecific(res, 'story');
+exports.getStories = async (req, res) => {
+  try {
+    // 1) через чистый helper получаем список
+    const stories = await fetchAndFormatSubmissions({ specific: 'story' }, -1);
+
+    // 2) возвращаем клиенту
+    return res.status(200).json(stories);
+  } catch (err) {
+    console.error('Error in getStories:', err);
+    return res.status(500).json({ error: 'Failed to get stories' });
+  }
+};
 
 // Get past stories (oldest first - past)
-exports.getPastSubmissions = async (req, res) => getSubmissionsBySpecific(res, 'story', 1);
+exports.getPastSubmissions = async (req, res) => {
+  try {
+    // 1) через чистый helper получаем список
+    const stories = await fetchAndFormatSubmissions({ specific: 'story' }, 1);
 
+    // 2) возвращаем клиенту
+    return res.status(200).json(stories);
+  } catch (err) {
+    console.error('Error in getPastSubmissions:', err);
+    return res.status(500).json({ error: 'Failed to get stories' });
+  }
+};
 // Specific "ask" submissions
-exports.getAskSubmissions = async (req, res) => getSubmissionsBySpecific(res, 'ask');
+exports.getAskSubmissions = async (req, res) => {
+  try {
+    // 1) через чистый helper получаем список
+    const stories = await fetchAndFormatSubmissions({ specific: 'ask' }, -1);
+
+    // 2) возвращаем клиенту
+    return res.status(200).json(stories);
+  } catch (err) {
+    console.error('Error in getAskSubmissions:', err);
+    return res.status(500).json({ error: 'Failed to get stories' });
+  }
+};
 
 // Specific "show" submissions
-exports.getShowSubmissions = async (req, res) => getSubmissionsBySpecific(res, 'show');
+exports.getShowSubmissions = async (req, res) => {
+  try {
+    // 1) через чистый helper получаем список
+    const stories = await fetchAndFormatSubmissions({ specific: 'show' }, -1);
+
+    // 2) возвращаем клиенту
+    return res.status(200).json(stories);
+  } catch (err) {
+    console.error('Error in getShowSubmissions:', err);
+    return res.status(500).json({ error: 'Failed to get stories' });
+  }
+};;
 
 // Specific "job" submissions
-exports.getJobSubmissions = async (req, res) => getSubmissionsBySpecific(res, 'job');
+exports.getJobSubmissions = async (req, res) => {
+  try {
+    // 1) через чистый helper получаем список
+    const stories = await fetchAndFormatSubmissions({ specific: 'job' }, -1);
+
+    // 2) возвращаем клиенту
+    return res.status(200).json(stories);
+  } catch (err) {
+    console.error('Error in getJobSubmissions:', err);
+    return res.status(500).json({ error: 'Failed to get stories' });
+  }
+};;
 
 // Vote for a submission
 exports.voteStory = async (req, res) => {

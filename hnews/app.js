@@ -1,8 +1,9 @@
 require('express-async-errors');
+const dotenv = require('dotenv');
+dotenv.config();
 const errorHandler = require('./middleware/errorHandler');
 const express = require('express');
 const connectDb = require('./config/db');
-const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const corsOptions = require('./config/cors');
@@ -14,7 +15,7 @@ const commentsRoutes = require('./routes/commentsRoutes');
 const userRoutes = require('./routes/userRoutes');
 
 
-dotenv.config();
+
 
 const app = express();
 app.use(express.json());
@@ -39,5 +40,5 @@ app.use(errorHandler);
 
 schedule();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

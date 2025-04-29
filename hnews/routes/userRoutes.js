@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { verifyToken } = require('../middleware/authMiddleware');
-const { authenticate } = require('../middleware/authenticate');
+const { requireAuth } = require('../middleware/authMiddleware');
 const {
   updateProfileValidation,
   changePasswordValidation,
@@ -13,8 +12,7 @@ const {
 const validateRequest = require('../middleware/validateRequest');
 
 // All routs need 
-router.use(verifyToken);
-router.use(authenticate);
+router.use(requireAuth);
 
 // GET /api/user/me - getting profile
 router.get('/me', userController.getProfile);

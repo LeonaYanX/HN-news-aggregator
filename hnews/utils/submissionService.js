@@ -55,13 +55,13 @@ async function createNewSubmission(userId, title, url, text, specific='story') {
             return submission;
 };
 //finding submission by specific
-async function findSubmissionBySpecific(specificValue) {
+async function findSubmissionBySpecific(specificValue , sortOrder) {
 
         if(!specificValue){
             throw {status: 400 , message: 'Specific value required.'};
         }
          const submissions = await Submission.find(specificValue)
-              .sort({ createdAt: sortOrder })
+              .sort({ createdAt: sortOrder}) 
               .populate('by', 'username')
               .lean();
 

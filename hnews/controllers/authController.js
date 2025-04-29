@@ -1,90 +1,127 @@
-const {generateTokens} = require('../utils/token');
-const RefreshToken = require('../models/refreshToken');// not practic to take to utils
-const {isAnExistingUser, createNewUser, isAnExistingUserByUsername, isPassMatching}
- = require('../utils/UserService');
+// controllers/authController.js
 
-//registration of the user
-exports.register = async (req,res)=>{
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-     const {username, email, password, role='guest'}= req.body;
+const {
+  generateTokens,
+  refreshTokens,
+  revokeRefreshToken
+} = require('../utils/token');
+const RefreshTokenModel = require('../models/RefreshToken');
 
-     //IsExisting
+const {
+  isAnExistingUser,
+  createNewUser,
+  isAnExistingUserByUsername,
+  isPassMatching,
+  findUserById
+} = require('../utils/UserService');
 
-      if(await isAnExistingUser(username, email)){
-        res.status(400).json({error: 'Username or email is already taken.'});
-      }
-   
-     // new user creation
-     
-    await createNewUser({username, email, password, role});
+const { userToView } = require('../viewModels/userViewModel');
+const jwtConfig = require('../config/jwt');
 
-    
-     res.status(201).json({message: 'User registred successfully'});
+/**
+ * POST /api/auth/register
+ */
+exports.register = async (req, res) => {
+  const { username, password, role = 'guest' } = req.body;
+
+  // Проверяем, что логин свободен
+  if (await isAnExistingUserByUsername(username)) {
+    return res.status(400).json({ error: 'Username is already taken.' });
+  }
+
+  // Создаём нового пользователя
+  const user = await createNewUser(username, password, role);
+
+  // Возвращаем вью-модель без пароля
+  return res
+    .status(201)
+    .json({ message: 'User registered successfully', user: userToView(user) });
 };
 
-exports.login = async(req,res)=>{
-        const {username , password} = req.body;
+/**
+ * POST /api/auth/login
+ */
+exports.login = async (req, res) => {
+  const { username, password } = req.body;
 
-        //finding user by username
-     
-     if(!(await isAnExistingUserByUsername(username))){
-        return res.status(404).json({error: 'User is not found, register first.'});
-     }
-     const user = await isAnExistingUserByUsername(username);
+  // Ищем пользователя по username
+  const user = await isAnExistingUserByUsername(username);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found, please register first.' });
+  }
 
-       // checking the password
+  // Проверяем пароль
+  if (!(await isPassMatching(password, user))) {
+    return res.status(401).json({ error: 'Invalid credentials.' });
+  }
 
-       if(!(await isPassMatching(password))){
-        return res.status(401).json({error: 'invalid credentials'});
-       } 
-
-       if(user.isBlocked){
-
-        if(user.blockedUntil && user.blockedUntil> Date.now()){
-        return res.status(403).json({ error: 'User is temporarily blocked.' });
-        } else if (!user.blockedUntil) {
-        return res.status(403).json({ error: 'User is permanently blocked.' });
-        }
-       
+  // Проверяем блокировку
+  if (user.isBlocked) {
+    if (user.blockedUntil && user.blockedUntil > Date.now()) {
+      return res.status(403).json({ error: 'User is temporarily blocked.' });
     }
+    if (!user.blockedUntil) {
+      return res.status(403).json({ error: 'User is permanently blocked.' });
+    }
+  }
 
-       // generating both tokens first refresh
+  // Генерируем пару токенов
+  const { accessToken, refreshToken } = await generateTokens(user._id);
 
-       const tokens = generateTokens(user.id);
-       res.status(201).json({
-        message: 'Successful login',
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken});
+  // Сохраняем refresh в HttpOnly-cookie
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+  });
+
+  // Отдаём access и профиль
+  return res.json({
+    accessToken,
+    user: userToView(user)
+  });
 };
 
-exports.refreshAccessToken = async (res,req)=>{
-        const { refreshToken } = req.body;
-        if(!refreshToken){
-            return res.status(400).json({message: 'Refresh token is required'});
-        }
+/**
+ * POST /api/auth/refresh
+ */
+exports.refreshAccessToken = async (req, res) => {
+  // Берём refresh из cookie
+  const oldToken = req.cookies.refreshToken;
+  if (!oldToken) {
+    return res.status(400).json({ error: 'Refresh token is required.' });
+  }
 
-        const tokenDoc = await RefreshToken.findOne({token: refreshToken});
-        if (!tokenDoc || tokenDoc.expiresAt < Date.now()){
-            return res.status(403).json({message: 'Refresh token is expired or invalid'});
-        }
-        // new tokens generation
+  try {
+    const { accessToken, refreshToken } = await refreshTokens(oldToken);
 
-    const tokens = generateTokens(tokenDoc.userId);
-    res.status(200).json({
-        message: 'Token refreshed',
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      });
+    // Перезаписываем cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({ accessToken });
+  } catch (err) {
+    return res.status(401).json({ error: err.message });
+  }
 };
 
-// logaout and deleting refresh token
-exports.logout = async (req, res)=>{
-
-
-        const { refreshToken } = req.body;
-        if(!refreshToken){
-            return res.status(400).json({message: 'Refresh token required.'});
-        }
-        await RefreshToken.deleteOne({token: refreshToken});
-        res.status(201).json({message: 'Logged out successfully.'});
+/**
+ * POST /api/auth/logout
+ */
+exports.logout = async (req, res) => {
+  const oldToken = req.cookies.refreshToken;
+  if (oldToken) {
+    // Удаляем из БД и сбрасываем cookie
+    await revokeRefreshToken(oldToken);
+    res.clearCookie('refreshToken');
+  }
+  return res.json({ message: 'Logged out successfully.' });
 };
