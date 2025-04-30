@@ -1,51 +1,58 @@
-// middleware/authMiddleware.js
-
-const jwt = require('jsonwebtoken');
-const jwtConfig = require('../config/jwt');
-const { findUserById } = require('../utils/UserService');
+const jwt = require("jsonwebtoken");
+const jwtConfig = require("../config/jwt");
+const { findUserById } = require("../utils/UserService");
 
 /**
- * requireAuth — middleware для защиты приватных роутов.
+ * Middleware that protects private routes by requiring a valid JWT.
  *
- * 1) Извлекает JWT из заголовка Authorization
- * 2) Проверяет его подпись и срок годности
- * 3) Подтягивает пользователя из БД (findUserById)
- * 4) Кладёт в req.user ({ id, username, role }) и вызывает next()
- * 5) При любой ошибке — возвращает 401 Unauthorized
+ * <ol>
+ *   <li>Extracts the JWT from the Authorization header.</li>
+ *   <li>Verifies the token's signature and expiration.</li>
+ *   <li>Fetches the user from the database using findUserById.</li>
+ *   <li>Attaches a minimal user object ({ id, username, role }) to req.user and calls next().</li>
+ *   <li>Returns 401 Unauthorized in case of any error.</li>
+ * </ol>
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @param {Function} next - Express next middleware function.
+ * @return {Promise<void>} Returns a 401 response on failure; otherwise calls next().
  */
 async function requireAuth(req, res, next) {
-  // 1. Достаём заголовок
+  // 1. Extract the Authorization header.
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token is required in Authorization header' });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Token is required in Authorization header" });
   }
 
-  // 2. Отсекаем префикс 'Bearer ' и обрезаем пробелы
+  // 2. Remove the 'Bearer ' prefix and trim any whitespace.
   const token = authHeader.slice(7).trim();
 
   try {
-    // 3. Верифицируем токен: проверяем подпись и exp
+    // 3. Verify the token: check its signature and expiration.
     const decoded = jwt.verify(token, jwtConfig.secretKey);
 
-    // 4. Проверяем, что пользователь есть в БД
+    // 4. Retrieve the user from the database.
     const user = await findUserById(decoded.id);
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ error: "User not found" });
     }
 
-    // 5. Кладём минимальный объект пользователя в req.user
+    // 5. Attach a minimal user object to req.user.
     req.user = {
       id: user._id.toString(),
       username: user.username,
-      role: user.role
+      role: user.role,
     };
 
-    // 6. Продолжаем цепочку
+    // 6. Continue to the next middleware.
     next();
   } catch (err) {
-    // Если подпись неверна или токен просрочен
-    console.error('Authentication error:', err);
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    // If the token is invalid or expired, log the error and return 401.
+    console.error("Authentication error:", err);
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 

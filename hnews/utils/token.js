@@ -1,86 +1,77 @@
-// utils/token.js
-
-const jwt = require('jsonwebtoken');
-const jwtConfig = require('../config/jwt');
-const RefreshToken = require('../models/RefreshToken');
+const jwt = require("jsonwebtoken");
+const jwtConfig = require("../config/jwt");
+const RefreshToken = require("../models/RefreshToken");
 
 /**
- * Выпускает одиночный JWT по переданному payload.
- * Обычно это access-токен с коротким сроком жизни.
+ * Generates a single JWT (usually an access token) with the given payload.
  *
- * @param {object} payload — полезная нагрузка, например { id: userId }
- * @param {string} [expiresIn='1h'] — время жизни токена (ms, s, m, h, d)
- * @returns {string} сгенерированный JWT
+ * @param {Object} payload - The payload to encode in the token (e.g., { id: userId }).
+ * @param {string} [expiresIn=jwtConfig.expiresIn] - Expiration time (e.g., '1h', '15m').
+ * @returns {string} - The generated JWT string.
  */
 function generateToken(payload, expiresIn = jwtConfig.expiresIn) {
   return jwt.sign(payload, jwtConfig.secretKey, { expiresIn });
 }
 
 /**
- * Выпускает пару токенов: access + refresh.
- *  - accessToken — короткоживущий (по умолчанию 15 минут)
- *  - refreshToken — долгоживущий (по умолчанию 7 дней)
- * Сохраняет refreshToken в БД для последующего контроля и отзыва.
+ * Generates a pair of tokens: access and refresh.
+ * Access token is short-lived, refresh token is long-lived.
+ * Saves the refresh token in the database for control and revocation.
  *
- * @param {string} userId — _id пользователя из MongoDB
- * @returns {Promise<{ accessToken: string, refreshToken: string }>}
+ * @param {string} userId - The MongoDB user ID.
+ * @returns {Promise<{ accessToken: string, refreshToken: string }>} - The token pair.
  */
 async function generateTokens(userId) {
-  // 1) Создаём payload для access-токена
   const payload = { id: userId };
 
-  // 2) Генерируем access и refresh
-  const accessToken  = generateToken(payload, '15m');
-  const refreshToken = jwt.sign({ id: userId }, jwtConfig.secretKey, { expiresIn: '7d' });
+  const accessToken = generateToken(payload, "15m");
+  const refreshToken = jwt.sign({ id: userId }, jwtConfig.secretKey, {
+    expiresIn: "7d",
+  });
 
-  // 3) Сохраняем refresh в БД с датой истечения
   await RefreshToken.create({
     token: refreshToken,
     userId,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 дней
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   });
 
   return { accessToken, refreshToken };
 }
 
 /**
- * Обновляет пару токенов по старому refresh-токену.
- *  - Проверяет наличие и срок годности старого refresh в БД
- *  - Генерирует новую пару
- *  - Удаляет/откатывает старый refresh (по необходимости)
+ * Refreshes a token pair using a valid refresh token.
+ * - Validates the refresh token in the database and its expiration.
+ * - Generates a new token pair.
+ * - Deletes the old refresh token record to prevent accumulation.
  *
- * @param {string} oldRefreshToken
- * @returns {Promise<{ accessToken: string, refreshToken: string }>}
- * @throws {Error} если токен не найден или просрочен
+ * @param {string} oldRefreshToken - The refresh token to be used for refreshing.
+ * @returns {Promise<{ accessToken: string, refreshToken: string }>} - The new token pair.
+ * @throws {Error} - If the token is not found or expired.
  */
 async function refreshTokens(oldRefreshToken) {
-  // 1) Ищем запись в БД
   const record = await RefreshToken.findOne({ token: oldRefreshToken });
+
   if (!record) {
-    throw new Error('Refresh token not found');
+    throw new Error("Refresh token not found");
   }
 
-  // 2) Проверяем дату истечения
   if (record.expiresAt < Date.now()) {
-    // на будущее: можно удалять старый
     await RefreshToken.deleteOne({ _id: record._id });
-    throw new Error('Refresh token expired');
+    throw new Error("Refresh token expired");
   }
 
-  // 3) Генерируем новую пару
   const { accessToken, refreshToken } = await generateTokens(record.userId);
 
-  // 4) Удаляем старую запись (чтобы не накапливать)
   await RefreshToken.deleteOne({ _id: record._id });
 
   return { accessToken, refreshToken };
 }
 
 /**
- * Явно отзывает (удаляет) refresh-токен из БД.
- * Вызывается при логауте.
+ * Explicitly revokes a refresh token by removing it from the database.
+ * Typically called during logout.
  *
- * @param {string} refreshToken
+ * @param {string} refreshToken - The token to revoke.
  * @returns {Promise<void>}
  */
 async function revokeRefreshToken(refreshToken) {
@@ -91,5 +82,5 @@ module.exports = {
   generateToken,
   generateTokens,
   refreshTokens,
-  revokeRefreshToken
+  revokeRefreshToken,
 };

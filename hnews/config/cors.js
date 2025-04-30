@@ -1,9 +1,34 @@
+/**
+ * @fileoverview CORS configuration options.
+ */
+
 const corsOptions = {
+  /** 
+   * @type {string[]}
+   * @description
+   * List of trusted origins allowed to access the API.
+   */
   origin: [
     'http://localhost:3000',
-    
-  ], // List of trusted domains.
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods.
+  ],
+
+  /** 
+   * @type {string[]}
+   * @description
+   * HTTP methods permitted for CORS requests.
+   */
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+  ],
+
+  /** 
+   * @type {string[]}
+   * @description
+   * HTTP headers allowed in CORS requests.
+   */
   allowedHeaders: [
     'Content-Type',
     'Authorization',
@@ -13,8 +38,15 @@ const corsOptions = {
     'Referrer-Policy',
     'X-Frame-Options',
     'X-Debug-Info',
-  ], // Allowed request headers.
-  credentials: true, // Enable credentials for cookies and authentication.
+  ],
+
+  /** 
+   * @type {boolean}
+   * @description
+   * Whether to expose cookies and authentication headers to the client.
+   */
+  credentials: true,
 };
 
 module.exports = corsOptions;
+

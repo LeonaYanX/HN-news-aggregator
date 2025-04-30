@@ -1,26 +1,57 @@
-const express = require('express');
+/**
+ * @fileoverview Authentication routes for user registration, login, token refresh, and logout.
+ */
+
+const express = require("express");
 const router = express.Router();
-const authController = require('../controllers/authController');
-const cookieParser = require('cookie-parser');
+const authController = require("../controllers/authController");
+const cookieParser = require("cookie-parser");
+
+// Middleware to parse cookies from incoming requests
 router.use(cookieParser());
-const { registerValidation, loginValidation  } = require('../validators/authValidators');
-const validateRequest = require('../middleware/validateRequest');
 
+const {
+  registerValidation,
+  loginValidation,
+} = require("../validators/authValidators");
+const validateRequest = require("../middleware/validateRequest");
 
-//POST /api/auth/register new user registration
+/**
+ * @route POST /api/auth/register
+ * @description Register a new user.
+ * @access Public
+ */
+router.post(
+  "/register",
+  registerValidation,
+  validateRequest,
+  authController.register
+);
 
-router.post('/register',registerValidation,validateRequest, authController.register);
+/**
+ * @route POST /api/auth/login
+ * @description Authenticate user and return access token.
+ * @access Public
+ */
+router.post(
+  "/login",
+  loginValidation,
+  validateRequest,
+  authController.login
+);
 
-//POST /api/auth/login user login
+/**
+ * @route POST /api/auth/refresh
+ * @description Refresh access token using refresh token.
+ * @access Public
+ */
+router.post("/refresh", authController.refreshAccessToken);
 
-router.post('/login',loginValidation ,validateRequest , authController.login); 
-
-//POST /api/auth/refresh access token refreshing route
-
-router.post('/refresh',  authController.refreshAccessToken);
-
-//POST /api/auth/logout logout and refresh token deleting in one
-
-router.post('/logout' , authController.logout);
+/**
+ * @route POST /api/auth/logout
+ * @description Logout user and clear authentication cookies.
+ * @access Public
+ */
+router.post("/logout", authController.logout);
 
 module.exports = router;
