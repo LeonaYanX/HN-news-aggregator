@@ -36,6 +36,35 @@ router.post(
  * Controller:
  *   - submissionController.getStories
  */
+
+/**
+ * @openapi
+ * /api/submission:
+ *   get:
+ *     summary: List all story-type submissions
+ *     tags:
+ *       - Submission
+ *     responses:
+ *       '200':
+ *         description: A JSON array of submissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   title:
+ *                     type: string
+ *                   votesCount:
+ *                     type: integer
+ *                   by:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ */
 router.get("/", submissionController.getStories);
 
 /**
