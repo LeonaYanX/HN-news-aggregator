@@ -1,3 +1,4 @@
+const { unvoteUser } = require("../../hnews-frontend/src/services/userService");
 const User = require("../models/User");
 
 /**
@@ -211,6 +212,38 @@ async function addSubmissionToFavorites(submissionId, userId) {
   return true;
 }
 
+async function increaseKarmaByUserId(userId, voterId) {
+  if (!userId || !voterId) {
+    throw { status: 400, message: "User ID and voter ID are required." };
+  }
+  const user = await User.findById(userId);
+  if (!user) {
+    throw { status: 404, message: "User not found." };
+  }
+  user.karmaCount += 1;
+  user.karma.push(voterId);
+
+  await user.save();
+
+  return user.karma;
+}
+
+async function unvoteUser(userId, voterId) {
+  if (!userId || !voterId) {
+    throw { status: 400, message: "User ID and voter ID are required." };
+  }
+  const user = await User.findById(userId);
+  if (!user) {
+    throw { status: 404, message: "User not found." };
+  }
+  user.karmaCount -= 1;
+
+  user.karma.push(voterId);
+  await user.save();
+
+  return user.karma;
+}
+
 module.exports = {
   findUserById,
   blockingUserByType,
@@ -224,4 +257,6 @@ module.exports = {
   addCommentToUserCommentArray,
   updateUserAbout,
   addSubmissionToFavorites,
+  increaseKarmaByUserId,
+  unvoteUser,
 };

@@ -189,4 +189,27 @@ router.put(
   userController.voteUser
 );
 
+ /**
+ * PUT /api/user/:userId/unvote
+ * Down-vote another user (decrements their karma by -1).
+ *
+ * URL Parameters:
+ *   - userId: Mongo ObjectId of the target user
+ *
+ * Middleware:
+ *   - userIdValidation: ensure valid ObjectId
+ *   - validateRequest
+ *
+ * Controller:
+ *   - userController.unvoteUser
+ */
+router.post('/:userId/vote',userIdValidation, validateRequest, userController.voteUser);
+
+// Unvote a user (decrement karma by -1)
+
+router.put('/:userId/unvote',userIdValidation, validateRequest, userController.unvoteUser);
+
+// Route to get vote status for the authenticated user
+router.get('/vote-status',userIdValidation, validateRequest, authMiddleware, getVoteStatus);
+
 module.exports = router;

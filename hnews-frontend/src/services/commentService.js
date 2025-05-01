@@ -8,7 +8,19 @@ export async function fetchComments(submissionId) {
   return res.data; // ожидаем массив комментов в виде view-моделей
 }
 
+// get all comments in the system
 export async function fetchAllComments(){
   const res = await axios.get();
   return res.data; 
+}
+
+//vote for comment
+export async function voteComment(id) {
+  const res = await axios.post(`/comment/${id}/vote`);
+  return res.data;
+}
+//unvote comment
+export async function unvoteComment(id) {
+  const res = await axios.post(`/comment/${id}/unvote`);
+  return res.data;
 }

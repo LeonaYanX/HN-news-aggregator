@@ -18,6 +18,7 @@ const {
   isSubmissionOwner,
   deleteUsersOwnSubmission,
   increaseKarmaByUserId,
+  unvoteUser
 } = require("../utils/UserService");
 
 const { userToView } = require("../viewModels/userViewModel");
@@ -178,6 +179,20 @@ exports.deleteOwnSubmission = async (req, res) => {
  */
 exports.voteUser = async (req, res) => {
   const { userId } = req.params;
-  await increaseKarmaByUserId(userId);
-  res.status(200).json({ message: "User upvoted" });
+  const {voterId} = req.user._id; // from token (string)
+  await increaseKarmaByUserId(userId, voterId);
+  res.status(200).json({ message: "User upvoted" , karma: user.karma });
+};
+
+exports.unvoteUser = async (req, res) => {
+  const { userId } = req.params;
+  await unvoteUser(userId);
+  res.status(200).json({ message: "User upvoted" , karma: user.karma });
+};
+
+exports.getVoteStatus = async (req, res) => {
+  const userId = req.user._id; // from token (string)
+  const user = await findUserById(userId);
+  const voted = user.karma.includes(userId);
+  res.json({ voted });
 };

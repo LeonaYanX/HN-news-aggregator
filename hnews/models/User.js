@@ -59,17 +59,22 @@ const userSchema = new mongoose.Schema({
    * @type {Number}
    * @default 1
    */
-  karma: {
+  karmaCount: {
     type: Number,
     default: 1,
   },
+  karma:[
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
   /**
    * Indicates whether the user is blocked.
    *
    * @type {Boolean}
    * @default false
    */
-  isBlocked: {
+   isBlocked: {
     type: Boolean,
     default: false,
   },
