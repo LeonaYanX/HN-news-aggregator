@@ -21,7 +21,7 @@ const Header = () => {
 
       {/* Навигация по разделам */}
       <nav style={styles.nav}>
-        <NavLink to="/"       style={styles.link} activeStyle={styles.active}>Welcome</NavLink>
+        <NavLink to="/welcome" style={styles.link} activeStyle={styles.active}>Welcome</NavLink>
         <NavLink to="/new"    style={styles.link} activeStyle={styles.active}>New</NavLink>
         <NavLink to="/threads"style={styles.link} activeStyle={styles.active}>Threads</NavLink>
         <NavLink to="/past"   style={styles.link} activeStyle={styles.active}>Past</NavLink>

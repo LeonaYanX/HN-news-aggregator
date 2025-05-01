@@ -14,6 +14,7 @@ import SubmitPage from './pages/SubmitPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import PrivateRoute from './components/PrivateRoute';
+import WelcomePage from './pages/WelcomePage';
 
 // Компонент приложения, в котором объявляются маршруты
 function App() {
@@ -29,7 +30,7 @@ function App() {
         <Route path="/ask" element={<AskPage />} />
         <Route path="/show" element={<ShowPage />} />
         <Route path="/jobs" element={<JobsPage />} />
-
+        <Route path="/welcome" element={<WelcomePage />} />
         {/* Приватные маршруты обёрнуты в компонент PrivateRoute,
             который проверяет, авторизован ли пользователь */}
         <Route
