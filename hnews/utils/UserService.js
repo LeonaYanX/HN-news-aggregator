@@ -225,7 +225,7 @@ async function increaseKarmaByUserId(userId, voterId) {
 
   await user.save();
 
-  return user.karma;
+  return user.karmaCount;
 }
 
 async function unvoteUser(userId, voterId) {
@@ -241,7 +241,7 @@ async function unvoteUser(userId, voterId) {
   user.karma.push(voterId);
   await user.save();
 
-  return user.karma;
+  return user.karmaCount;
 }
 
 module.exports = {

@@ -180,14 +180,14 @@ exports.deleteOwnSubmission = async (req, res) => {
 exports.voteUser = async (req, res) => {
   const { userId } = req.params;
   const {voterId} = req.user._id; // from token (string)
-  await increaseKarmaByUserId(userId, voterId);
-  res.status(200).json({ message: "User upvoted" , karma: user.karma });
+  const karmaCount=await increaseKarmaByUserId(userId, voterId);
+  res.status(200).json({ message: "User upvoted" , karma: karmaCount });
 };
 
 exports.unvoteUser = async (req, res) => {
   const { userId } = req.params;
-  await unvoteUser(userId);
-  res.status(200).json({ message: "User upvoted" , karma: user.karma });
+  const karmaCount=await unvoteUser(userId);
+  res.status(200).json({ message: "User upvoted" , karma: karmaCount });
 };
 
 exports.getVoteStatus = async (req, res) => {
