@@ -1,7 +1,8 @@
 // src/pages/AskPage.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchAskSubmissions } from '../services/submissionService';
+import { fetchAskSubmissions
+} from '../services/submissionService';
 import UserVoteButton from '../components/UserVoteButton';
 import {
   getUserVoteStatus,
@@ -41,20 +42,23 @@ export default function AskPage() {
     <ul>
       {stories.map(s => (
         <li key={s.id}>
-          <a href={s.url} target="_blank" rel="noopener noreferrer">
-            {s.title}
-          </a>
+          {' '}
           <small>
-            by {s.by}{' '}
-            {/* correct userId for votting*/}
+           by {s.by} {' '}
+               {' '}
+            {/* correct userId for votting */}
             <UserVoteButton
               userId={s.byId}
               fetchStatusFn={fetchVoteStatus}
               onVote={voteUser}
               onUnvote={unvoteUser}
             />
-            {' '}— {s.votesCount} votes
-          </small>
+            {' '}
+            </small>
+            {' '}
+            <a href={s.url} target="_blank" rel="noopener noreferrer">
+              {s.title} {' '}
+            </a>
         </li>
       ))}
     </ul>

@@ -104,7 +104,7 @@ async function findSubmissionBySpecific(specificValue, sortOrder) {
 
   const submissions = await Submission.find(specificValue)
     .sort({ createdAt: sortOrder })
-    .populate("by", "username")
+    .populate("by", "username") 
     .lean();
 
   return submissions;

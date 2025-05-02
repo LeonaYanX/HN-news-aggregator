@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   voteUser as apiVoteUser,
   unvoteUser as apiUnvoteUser,
-  getUserVoteStatus
+  getUserVoteStatus, fetchUserKarma
 } from '../services/userService';
 
 /**
@@ -20,14 +20,20 @@ export default function UserVoteButton({ userId, initialVoted = false }) {
   const navigate = useNavigate();
   const [voted, setVoted] = useState(initialVoted);
   const [busy, setBusy] = useState(false);
+  const [karma, setKarma] = useState(0);
 
   // On mount, fetch real status if not provided
   useEffect(() => {
-    if (!auth.accessToken) return;
-    getUserVoteStatus(userId)
-      .then(data => setVoted(data.voted))
-      .catch(console.error);
-  }, [auth.accessToken, userId]);
+    if (!userId) return;
+    // Initial fetch of vote status and karma count
+    Promise.all([
+      getUserVoteStatus(userId),
+      fetchUserKarma(userId)
+    ]).then(([{ voted }, karmaCount]) => {
+      setVoted(voted);
+      setKarma(karmaCount);
+    }).catch(console.error);
+  }, [userId, auth.accessToken]);
 
   const handleClick = async () => {
     if (!auth.accessToken) {
@@ -37,14 +43,17 @@ export default function UserVoteButton({ userId, initialVoted = false }) {
     setBusy(true);
     try {
       if (voted) {
-        await apiUnvoteUser(userId);
+        const { karma: newKarma } = await apiUnvoteUser(userId);
+        setKarma(newKarma);
         setVoted(false);
       } else {
-        await apiVoteUser(userId);
+        const { karma: newKarma } = await apiVoteUser(userId);
+        setKarma(newKarma);
         setVoted(true);
       }
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.message || 'Vote failed');
     } finally {
       setBusy(false);
     }
@@ -64,7 +73,7 @@ export default function UserVoteButton({ userId, initialVoted = false }) {
       }}
       title={voted ? 'Unvote user' : 'Vote user'}
     >
-      ▲
+      ▲ <span style={{ marginLeft: 4 }}>{'Karma '}{karma}</span>
     </button>
   );
 }

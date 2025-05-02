@@ -209,4 +209,7 @@ router.put(
 // Route to get vote status for the authenticated user
 router.get('/:userId/vote-status',userIdValidation, validateRequest,userController.getVoteStatus);
 
+// Public endpoint to get user's karma
+router.get('/:userId/karma', userController.getUserKarma);
+
 module.exports = router;

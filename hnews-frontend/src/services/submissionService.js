@@ -114,3 +114,12 @@ export async function fetchYearBackSubmissions() {
   const response = await axios.get('/submission/year/back');
   return response.data;
 }
+
+/**
+ * Get vote status for the authenticated user wrt another user.
+ * Returns { voted: boolean }.
+ */
+export async function getSubmissionVoteStatus(userId) {
+  const res = await axios.get(`/user/${userId}/vote-status`);
+  return res.data; 
+}

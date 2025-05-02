@@ -199,3 +199,10 @@ exports.getVoteStatus = async (req, res) => {
   const voted = user.karma.includes(voterId);
   res.json({ voted: voted });
 };
+
+// GET /api/user/:userId/karma
+exports.getUserKarma = async (req, res) => {
+  const { userId } = req.params;
+  const user = await findUserById(userId);
+  res.status(200).json({ karma: user.karmaCount });
+};

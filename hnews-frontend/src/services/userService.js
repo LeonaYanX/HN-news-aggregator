@@ -25,3 +25,9 @@ export async function getUserVoteStatus(userId) {
   const res = await axios.get(`/user/${userId}/vote-status`);
   return res.data; 
 }
+
+/** GET /api/user/:userId/karma */
+export async function fetchUserKarma(userId) {
+  const res = await axios.get(`/user/${userId}/karma`);
+  return res.data.karma;
+}

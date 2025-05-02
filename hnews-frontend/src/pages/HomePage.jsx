@@ -1,8 +1,10 @@
 // src/pages/HomePage.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchStories } from '../services/submissionService';
+import { fetchStories, getSubmissionVoteStatus, voteSubmission ,unvoteSubmission } 
+from '../services/submissionService';
 import UserVoteButton from '../components/UserVoteButton';
+import VoteButton from '../components/UserVoteButton';
 import {
   getUserVoteStatus,
   voteUser,
@@ -32,6 +34,10 @@ export default function HomePage() {
         (userId) => getUserVoteStatus(userId),
         []
       );
+      const fetchSubVoteStatus = useCallback(
+          (userId) => getSubmissionVoteStatus(userId),
+          []
+        );
 
   if (loading) return <p>Загрузка...</p>;
   if (error)   return <p style={{ color:'red' }}>{error}</p>;
@@ -39,7 +45,19 @@ export default function HomePage() {
   return (
     <ul>
       {stories.map(s => (
+        
         <li key={s.id}>
+          <small>
+                      by {s.by}{' '}
+                      {/* correct userId for votting*/}
+                      <VoteButton
+                        userId={s.byId}
+                        fetchStatusFn={fetchSubVoteStatus}
+                        onVote={voteSubmission}
+                        onUnvote={unvoteSubmission}
+                      />
+                      {' '}— {s.votesCount} votes
+                    </small>
           <a href={s.url} target="_blank" rel="noopener noreferrer">
             {s.title}
           </a>
