@@ -12,6 +12,14 @@ const Header = () => {
     navigate('/login');
   };
 
+  // Общий стиль для всех ссылок
+  const baseLinkStyle = {
+    color: '#fff',
+    textDecoration: 'none',
+    fontWeight: '500',
+    marginRight: '1rem',
+  };
+
   return (
     <header style={styles.header}>
       {/* Логотип */}
@@ -19,40 +27,58 @@ const Header = () => {
         HackerNews
       </Link>
 
-      {/* Навигация по разделам */}
+      {/* Навигация */}
       <nav style={styles.nav}>
-        <NavLink to="/welcome" style={styles.link} activeStyle={styles.active}>Welcome</NavLink>
-        <NavLink to="/new"    style={styles.link} activeStyle={styles.active}>New</NavLink>
-        <NavLink to="/threads"style={styles.link} activeStyle={styles.active}>Threads</NavLink>
-        <NavLink to="/past"   style={styles.link} activeStyle={styles.active}>Past</NavLink>
-        <NavLink to="/comments" style={styles.link} activeStyle={styles.active}>Comments</NavLink>
-        <NavLink to="/ask"    style={styles.link} activeStyle={styles.active}>Ask</NavLink>
-        <NavLink to="/show"   style={styles.link} activeStyle={styles.active}>Show</NavLink>
-        <NavLink to="/jobs"   style={styles.link} activeStyle={styles.active}>Jobs</NavLink>
-        <NavLink to="/submit" style={styles.link} activeStyle={styles.active}>Submit</NavLink>
+        {[
+          ['Welcome', '/welcome'],
+          ['New', '/new'],
+          ['Threads', '/threads'],
+          ['Past', '/past'],
+          ['Comments', '/comments'],
+          ['Ask', '/ask'],
+          ['Show', '/show'],
+          ['Jobs', '/jobs'],
+          ['Submit', '/submit'],
+        ].map(([label, path]) => (
+          <NavLink
+            key={path}
+            to={path}
+            // style — функция, получающая { isActive }
+            style={({ isActive }) => ({
+              ...baseLinkStyle,
+              // если активен, подчёркиваем
+              textDecoration: isActive ? 'underline' : 'none',
+            })}
+          >
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
-      {/* Правый блок: имя пользователя и кнопка */}
+      {/* Блок пользователя */}
       <div style={styles.userBlock}>
-        {auth.user
-          ? (
-            <>
-              <Link to="/profile" style={styles.username}>{auth.user.username}</Link>
-              <button onClick={onLogout} style={styles.button}>Logout</button>
-            </>
-          )
-          : (
-            <button onClick={() => navigate('/login')} style={styles.button}>
-              Login
+        {auth.user ? (
+          <>
+            {/* Ссылка на профиль пользователя */}
+            <Link to="/profile" style={styles.username}>
+              {auth.user.username}
+            </Link>
+            {/* Кнопка выхода */}
+            <button onClick={onLogout} style={styles.button}>
+              Logout
             </button>
-          )
-        }
+          </>
+        ) : (
+          <button onClick={() => navigate('/auth')} style={styles.button}>
+            Login
+          </button>
+        )}
       </div>
     </header>
   );
 };
 
-// Простые inline-стили для примера
+// Inline-стили
 const styles = {
   header: {
     display: 'flex',
@@ -70,16 +96,8 @@ const styles = {
   },
   nav: {
     display: 'flex',
-    gap: '1rem',
     flexGrow: 1,
-  },
-  link: {
-    color: '#fff',
-    textDecoration: 'none',
-    fontWeight: '500',
-  },
-  active: {
-    textDecoration: 'underline',
+    alignItems: 'center',
   },
   userBlock: {
     display: 'flex',

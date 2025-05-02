@@ -1,25 +1,27 @@
 // src/services/userService.js
 import axios from '../api/axios';
 
+/**
+ * Vote for a user (increments their karma by 1).
+ */
 export async function voteUser(userId) {
   const res = await axios.put(`/user/${userId}/vote`);
-  return res.data;
+  return res.data; // { message, karma }
 }
 
 /**
- * Unvote a user (decrements their karma by -1).
- * @param {string} userId - The ID of the user to unvote.
- * @returns {Promise<Object>} - The response data from the server.
+ * Unvote a user (decrements their karma by 1).
  */
 export async function unvoteUser(userId) {
   const res = await axios.put(`/user/${userId}/unvote`);
-  return res.data;
+  return res.data; // { message, karma }
 }
+
 /**
- *  GET /api/user/vote-status
- 
-*/
-export async function fetchSubmissionVoteStatus() {
-    const res = await axios.get(`/user/vote-status`);
-    return res.data.voted;
-  }
+ * Get vote status for the authenticated user wrt another user.
+ * Returns { voted: boolean }.
+ */
+export async function getUserVoteStatus(userId) {
+  const res = await axios.get(`/user/${userId}/vote-status`);
+  return res.data; 
+}

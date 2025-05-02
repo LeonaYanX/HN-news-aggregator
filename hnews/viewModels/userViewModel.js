@@ -9,7 +9,7 @@ function userToView(userDoc) {
     id: userDoc._id,
     username: userDoc.username,
     createdAt: userDoc.createdAt,
-    karma: userDoc.karma, // Karma score of the user
+    karma: userDoc.karmaCount, // Karma score of the user
   };
 }
 

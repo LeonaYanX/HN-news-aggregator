@@ -196,3 +196,4 @@ exports.getVoteStatus = async (req, res) => {
   const voted = user.karma.includes(userId);
   res.json({ voted });
 };
+

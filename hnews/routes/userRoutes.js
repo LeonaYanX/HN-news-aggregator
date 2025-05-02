@@ -203,13 +203,10 @@ router.put(
  * Controller:
  *   - userController.unvoteUser
  */
-router.post('/:userId/vote',userIdValidation, validateRequest, userController.voteUser);
 
-// Unvote a user (decrement karma by -1)
-
-router.put('/:userId/unvote',userIdValidation, validateRequest, userController.unvoteUser);
+ router.put('/:userId/unvote',userIdValidation, validateRequest, userController.unvoteUser);
 
 // Route to get vote status for the authenticated user
-router.get('/vote-status',userIdValidation, validateRequest, authMiddleware, getVoteStatus);
+router.get('/:userId/vote-status',userIdValidation, validateRequest,userController.getVoteStatus);
 
 module.exports = router;

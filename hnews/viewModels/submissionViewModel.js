@@ -10,6 +10,7 @@ function submissionToView(submissionDoc) {
     title: submissionDoc.title,
     votesCount: submissionDoc.votes ? submissionDoc.votes.length : 0, // Number of votes
     by: submissionDoc.by?.username || null, // Username of the user who created the submission
+    byId: submissionDoc.by?._id || null, // ID of the user who created the submission
     createdAt: submissionDoc.createdAt,
   };
 }

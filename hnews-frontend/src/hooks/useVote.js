@@ -2,22 +2,28 @@
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
+/**
+ * Хук для голосования:
+ * - при монтировании запрашивает статус (голосовал ли)
+ * - при клике либо голосует, либо снимает голос
+ */
 export function useVote({ itemId, fetchStatusFn, onVote, onUnvote }) {
   const { auth } = useContext(AuthContext);
   const [voted, setVoted] = useState(false);
 
-  // 1. При монтировании узнаём, голосовал ли текущий пользователь
+  // 1) При монтировании узнаём, голосовал ли текущий пользователь
   useEffect(() => {
     if (!auth.user) return;
+
     fetchStatusFn(itemId).then(status => {
       setVoted(status);
     });
-  }, [auth.user, itemId]);
+  // Добавили fetchStatusFn в массив зависимостей
+  }, [auth.user, itemId, fetchStatusFn]);
 
-  // 2. Обработчик клика
+  // 2) Обработчик клика
   const handleClick = async () => {
     if (!auth.user) {
-      // 2.1. если не залогинен — редирект
       window.location.href = '/login';
       return;
     }

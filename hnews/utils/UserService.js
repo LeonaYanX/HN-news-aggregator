@@ -1,4 +1,4 @@
-const { unvoteUser } = require("../../hnews-frontend/src/services/userService");
+// File: hnews/utils/UserService.js
 const User = require("../models/User");
 
 /**
@@ -212,37 +212,66 @@ async function addSubmissionToFavorites(submissionId, userId) {
   return true;
 }
 
+/**
+ * Increment target user’s karma by 1, recording the voter’s ID.
+ *
+ * @param {string} userId   
+ * @param {string} voterId  
+ * @returns {number}       
+ * @throws {Object}        
+ */
 async function increaseKarmaByUserId(userId, voterId) {
   if (!userId || !voterId) {
-    throw { status: 400, message: "User ID and voter ID are required." };
+    throw { status: 400, message: 'User ID and voter ID are required.' };
   }
   const user = await User.findById(userId);
   if (!user) {
-    throw { status: 404, message: "User not found." };
+    throw { status: 404, message: 'User not found.' };
   }
-  user.karmaCount += 1;
+
+  // if already voted 
+  if (user.karma.includes(voterId)) {
+    throw { status: 400, message: 'You have already voted for this user.' };
+  }
+
+  
   user.karma.push(voterId);
+  user.karmaCount = user.karma.length;
 
   await user.save();
-
   return user.karmaCount;
 }
 
-async function unvoteUser(userId, voterId) {
+/**
+ * Decrement target user’s karma by 1, removing the voter’s ID.
+ *
+ * @param {string} userId  
+ * @param {string} voterId  
+ * @returns {number}        
+ * @throws {Object}         
+ */
+async function unvoteUserService(userId, voterId) {
   if (!userId || !voterId) {
-    throw { status: 400, message: "User ID and voter ID are required." };
+    throw { status: 400, message: 'User ID and voter ID are required.' };
   }
   const user = await User.findById(userId);
   if (!user) {
-    throw { status: 404, message: "User not found." };
+    throw { status: 404, message: 'User not found.' };
   }
-  user.karmaCount -= 1;
 
-  user.karma.push(voterId);
+  // Если не голосовал ранее — нельзя снять
+  if (!user.karma.includes(voterId)) {
+    throw { status: 400, message: 'You have not voted for this user.' };
+  }
+
+  // Удаляем голосовавший ID из массива
+  user.karma = user.karma.filter(id => id.toString() !== voterId.toString());
+  user.karmaCount = user.karma.length;
+
   await user.save();
-
   return user.karmaCount;
 }
+
 
 module.exports = {
   findUserById,
@@ -258,5 +287,5 @@ module.exports = {
   updateUserAbout,
   addSubmissionToFavorites,
   increaseKarmaByUserId,
-  unvoteUser,
+  unvoteUser: unvoteUserService,
 };
