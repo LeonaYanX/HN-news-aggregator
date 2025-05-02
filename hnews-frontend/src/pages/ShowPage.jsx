@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect , useCallback} from 'react';
 import { fetchShowSubmissions } from '../services/submissionService';
-
+import UserVoteButton from '../components/UserVoteButton';
+import {
+  getUserVoteStatus,
+  voteUser,
+  unvoteUser
+} from '../services/userService';
 export default function NewPage() {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,12 +19,18 @@ export default function NewPage() {
       })
       .catch(err => {
         console.error(err);
-        setError('Не удалось загрузить show истории');
+        setError('Error loading show submissions');
         setLoading(false);
       });
   }, []);
 
-  if (loading) return <p>Загрузка...</p>;
+  // Function that gets status of voting for user (useCallback for optimization)
+    const fetchVoteStatus = useCallback(
+      (userId) => getUserVoteStatus(userId),
+      []
+    );
+
+  if (loading) return <p>Loading...</p>;
   if (error)   return <p style={{ color:'red' }}>{error}</p>;
 
   return (
@@ -29,7 +40,16 @@ export default function NewPage() {
           <a href={s.url} target="_blank" rel="noopener noreferrer">
             {s.title}
           </a>
-          <small> by {s.by} — {s.votesCount} votes</small>
+          <small> by {s.by} {' '}
+             {/* correct userId for votting*/}
+                        <UserVoteButton
+                          userId={s.byId}
+                          fetchStatusFn={fetchVoteStatus}
+                          onVote={voteUser}
+                          onUnvote={unvoteUser}
+                        />
+           {' '} — {s.votesCount} votes
+            </small>
         </li>
       ))}
     </ul>

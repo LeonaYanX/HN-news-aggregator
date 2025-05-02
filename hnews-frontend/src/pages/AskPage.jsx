@@ -14,7 +14,7 @@ export default function AskPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Загружаем ask-публикации
+  //loading ask-submissions
   useEffect(() => {
     fetchAskSubmissions()
       .then(data => {
@@ -23,18 +23,18 @@ export default function AskPage() {
       })
       .catch(err => {
         console.error(err);
-        setError('Не удалось загрузить ask истории');
+        setError('Error loading ask submissions');
         setLoading(false);
       });
   }, []);
 
-  // Функция для получения статуса голосования за пользователя (useCallback для оптимизации)
+  // Function that gets status of voting for user (useCallback for optimization)
   const fetchVoteStatus = useCallback(
     (userId) => getUserVoteStatus(userId),
     []
   );
 
-  if (loading) return <p>Загрузка...</p>;
+  if (loading) return <p>loading...</p>;
   if (error)   return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
@@ -46,7 +46,7 @@ export default function AskPage() {
           </a>
           <small>
             by {s.by}{' '}
-            {/* Передаём корректный userId для голосования */}
+            {/* correct userId for votting*/}
             <UserVoteButton
               userId={s.byId}
               fetchStatusFn={fetchVoteStatus}

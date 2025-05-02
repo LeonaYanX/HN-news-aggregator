@@ -1,7 +1,13 @@
 // src/pages/HomePage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchStories } from '../services/submissionService';
+import UserVoteButton from '../components/UserVoteButton';
+import {
+  getUserVoteStatus,
+  voteUser,
+  unvoteUser
+} from '../services/userService';
 
 export default function HomePage() {
   const [stories, setStories] = useState([]);
@@ -16,10 +22,16 @@ export default function HomePage() {
       })
       .catch(err => {
         console.error(err);
-        setError('Не удалось загрузить истории');
+        setError('Error loading stories');
         setLoading(false);
       });
   }, []);
+
+  // Function that gets status of voting for user (useCallback for optimization)
+      const fetchVoteStatus = useCallback(
+        (userId) => getUserVoteStatus(userId),
+        []
+      );
 
   if (loading) return <p>Загрузка...</p>;
   if (error)   return <p style={{ color:'red' }}>{error}</p>;
@@ -31,7 +43,16 @@ export default function HomePage() {
           <a href={s.url} target="_blank" rel="noopener noreferrer">
             {s.title}
           </a>
-          <small> by {s.by} — {s.votesCount} votes</small>
+          <small> by {s.by} — {' '}
+                       {/* correct userId for votting*/}
+                                  <UserVoteButton
+                                    userId={s.byId}
+                                    fetchStatusFn={fetchVoteStatus}
+                                    onVote={voteUser}
+                                    onUnvote={unvoteUser}
+                                  />
+                     {' '} {s.votesCount} votes
+            </small>
         </li>
       ))}
     </ul>
