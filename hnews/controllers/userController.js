@@ -18,7 +18,7 @@ const {
   isSubmissionOwner,
   deleteUsersOwnSubmission,
   increaseKarmaByUserId,
-  unvoteUser
+  unvoteUserService,
 } = require("../utils/UserService");
 
 const { userToView } = require("../viewModels/userViewModel");
@@ -45,9 +45,9 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   const { about } = req.body;
   const user = await findUserById(req.user.id);
-  
+
   await updateUserAbout(about, user);
-  
+
   res.status(200).json({ message: "Profile updated" });
 };
 
@@ -179,21 +179,23 @@ exports.deleteOwnSubmission = async (req, res) => {
  */
 exports.voteUser = async (req, res) => {
   const { userId } = req.params;
-  const {voterId} = req.user._id; // from token (string)
-  const karmaCount=await increaseKarmaByUserId(userId, voterId);
-  res.status(200).json({ message: "User upvoted" , karma: karmaCount });
+  const voterId = req.user.id; // from token (string)
+  const karmaCount = await increaseKarmaByUserId(userId, voterId);
+  res.status(200).json({ message: "User upvoted", karma: karmaCount });
 };
 
 exports.unvoteUser = async (req, res) => {
   const { userId } = req.params;
-  const karmaCount=await unvoteUser(userId);
-  res.status(200).json({ message: "User upvoted" , karma: karmaCount });
+  const voterId = req.user.id; // from token (string)
+  // Check if the user has already voted for the target user
+  const karmaCount = await unvoteUserService(userId, voterId);
+  res.status(200).json({ message: "User upvoted", karma: karmaCount });
 };
 
 exports.getVoteStatus = async (req, res) => {
-  const userId = req.user._id; // from token (string)
-  const user = await findUserById(userId);
-  const voted = user.karma.includes(userId);
-  res.json({ voted });
+  const targetuserId = req.params.userId || req.query.targetId; // for the target user
+  const voterId = req.user.id; // from token (string)who is logged in
+  const user = await findUserById(targetuserId); // find the target user
+  const voted = user.karma.includes(voterId);
+  res.json({ voted: voted });
 };
-

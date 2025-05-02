@@ -228,7 +228,9 @@ async function increaseKarmaByUserId(userId, voterId) {
   if (!user) {
     throw { status: 404, message: 'User not found.' };
   }
-
+  if (!Array.isArray(user.karma)) {
+    user.karma = [];
+  }
   // if already voted 
   if (user.karma.includes(voterId)) {
     throw { status: 400, message: 'You have already voted for this user.' };
@@ -258,13 +260,16 @@ async function unvoteUserService(userId, voterId) {
   if (!user) {
     throw { status: 404, message: 'User not found.' };
   }
+  if (!Array.isArray(user.karma)) {
+    user.karma = [];
+  }
 
-  // Если не голосовал ранее — нельзя снять
+  // if not voted 
   if (!user.karma.includes(voterId)) {
     throw { status: 400, message: 'You have not voted for this user.' };
   }
 
-  // Удаляем голосовавший ID из массива
+  // delete the voterId from the karma array
   user.karma = user.karma.filter(id => id.toString() !== voterId.toString());
   user.karmaCount = user.karma.length;
 
@@ -287,5 +292,5 @@ module.exports = {
   updateUserAbout,
   addSubmissionToFavorites,
   increaseKarmaByUserId,
-  unvoteUser: unvoteUserService,
+  unvoteUserService,
 };
